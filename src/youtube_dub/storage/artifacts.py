@@ -80,7 +80,7 @@ class ManifestStore:
                 f.flush()
                 os.fsync(f.fileno())
             tmp_path.replace(path)
-        except Exception as e:
+        except OSError as e:
             if tmp_path.exists():
                 tmp_path.unlink()
             raise ManifestError(f"Failed to save manifest: {e}")
