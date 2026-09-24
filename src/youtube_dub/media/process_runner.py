@@ -140,7 +140,7 @@ class ProcessRunner:
 
         return CompletedProcess(
             args=cmd,
-            returncode=process.returncode, # type: ignore
+            returncode=process.returncode,  # type: ignore
             stdout=stdout_data,
             stderr=stderr_data,
         )
