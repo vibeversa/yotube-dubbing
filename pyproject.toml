@@ -1,0 +1,26 @@
+[project]
+name = "youtube-dub"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "google-labs-jules[bot]", email = "161369871+google-labs-jules[bot]@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "google-genai>=2.25.0",
+]
+
+[project.scripts]
+youtube-dub = "youtube_dub.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12.18,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.1",
+    "pytest>=9.1.1",
+    "ruff>=0.16.8",
+]
