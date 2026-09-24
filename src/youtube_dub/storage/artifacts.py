@@ -96,3 +96,43 @@ class ManifestStore:
             return self._deserialize_manifest(data)
         except json.JSONDecodeError as e:
             raise ManifestError(f"Manifest JSON corrupt: {e}")
+
+class JobArtifactStore:
+    def __init__(self, manifest_store: ManifestStore):
+        self.job_root = manifest_store.job_root
+
+    def get_job_dir(self, job_id: str) -> Path:
+        return self.job_root / job_id
+
+    def path_for(self, job_id: str, artifact_type: str, segment_id: str | None = None) -> Path:
+        job_dir = self.get_job_dir(job_id)
+
+        if artifact_type == "source_media":
+             return job_dir / "source" / "input.mp4" # Simplify extension for now
+        elif artifact_type == "source_audio":
+             return job_dir / "source" / "source_audio.wav"
+        elif artifact_type == "separated_vocals":
+             return job_dir / "source" / "vocals.wav"
+        elif artifact_type == "separated_bg":
+             return job_dir / "source" / "background.wav"
+        elif artifact_type == "words":
+             return job_dir / "transcription" / "words.json"
+        elif artifact_type == "segments":
+             return job_dir / "segmentation" / "segments.json"
+        elif artifact_type == "translations":
+             return job_dir / "translation" / "translations.json"
+        elif artifact_type == "tts":
+             if not segment_id:
+                 raise ValueError("tts artifact requires segment_id")
+             return job_dir / "tts" / f"{segment_id}.wav"
+        elif artifact_type == "timing":
+             return job_dir / "timing" / "timing.json"
+        elif artifact_type == "mix":
+             return job_dir / "mix" / "dubbed_audio.wav"
+        elif artifact_type == "render":
+             return job_dir / "render" / "final.mp4"
+
+        raise ValueError(f"Unknown artifact type: {artifact_type}")
+
+    def exists(self, job_id: str, artifact_type: str, segment_id: str | None = None) -> bool:
+        return self.path_for(job_id, artifact_type, segment_id).exists()
