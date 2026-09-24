@@ -1,0 +1,38 @@
+import enum
+
+
+class PipelineStage(str, enum.Enum):
+    SOURCE_READY = "SOURCE_READY"
+    TRANSCRIBED = "TRANSCRIBED"
+    SEGMENTED = "SEGMENTED"
+    TRANSLATED = "TRANSLATED"
+    TTS_PARTIAL = "TTS_PARTIAL"
+    ALIGNED = "ALIGNED"
+    TIMED = "TIMED"
+    MIXED = "MIXED"
+    RENDERED = "RENDERED"
+    COMPLETED = "COMPLETED"
+
+
+class JobStatus(str, enum.Enum):
+    CREATED = "CREATED"
+    RUNNING = "RUNNING"
+    CANCELLING = "CANCELLING"
+    CANCELLED = "CANCELLED"
+    FAILED = "FAILED"
+    COMPLETED = "COMPLETED"
+
+
+class StageStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    SKIPPED = "SKIPPED"
+
+
+class SegmentStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    TRANSLATED = "TRANSLATED"
+    SYNTHESIZED = "SYNTHESIZED"
+    FAILED = "FAILED"
