@@ -187,12 +187,14 @@ async def test_read_index_missing(client, monkeypatch):
     import os
 
     real_exists = os.path.exists
-    monkeypatch.setattr(os.path, "exists", lambda x: False if str(x).endswith("index.html") else real_exists(x))
+    monkeypatch.setattr(
+        os.path,
+        "exists",
+        lambda x: False if str(x).endswith("index.html") else real_exists(x),
+    )
     response = await client.get("/")
     assert response.status_code == 200
     assert "Static files missing" in response.text
-
-
 
 
 @pytest.mark.asyncio
