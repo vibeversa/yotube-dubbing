@@ -128,3 +128,70 @@ async def test_segment_stage_success(fake_context, tmp_path):
     assert len(segments) == 2
     assert segments[0]["source_text"] == "a b"
     assert segments[1]["source_text"] == "c"
+
+
+@pytest.mark.asyncio
+async def test_source_ready_missing_source(fake_context, tmp_path):
+    stage = SourceReadyStage()
+    res = await stage.run(fake_context)
+    assert res.status == StageStatus.FAILED
+    assert "Source media not found" in res.error
+
+
+@pytest.mark.asyncio
+async def test_transcribe_missing_audio(fake_context, tmp_path):
+    fake_context.transcription_provider = MagicMock()
+    stage = TranscribeStage()
+    res = await stage.run(fake_context)
+    assert res.status == StageStatus.FAILED
+    assert "Source audio artifact not found" in res.error
+
+
+@pytest.mark.asyncio
+async def test_segment_stage_missing_words(fake_context, tmp_path):
+    stage = SegmentStage()
+    res = await stage.run(fake_context)
+    assert res.status == StageStatus.FAILED
+    assert "Words artifact not found" in res.error
+
+
+@pytest.mark.asyncio
+async def test_source_ready_ffprobe_error(fake_context, tmp_path):
+    source_media = fake_context.artifact_store.path_for(
+        fake_context.job_id, "source_media"
+    )
+    source_media.parent.mkdir(parents=True)
+    source_media.touch()
+
+    async def mock_run(cmd, **kwargs):
+        raise ValueError("ffprobe fail")
+
+    fake_context.process_runner.run.side_effect = mock_run
+
+    stage = SourceReadyStage()
+    res = await stage.run(fake_context)
+    assert res.status == StageStatus.FAILED
+    assert "ffprobe fail" in res.error
+
+
+@pytest.mark.asyncio
+async def test_source_ready_too_long(fake_context, tmp_path):
+    source_media = fake_context.artifact_store.path_for(
+        fake_context.job_id, "source_media"
+    )
+    source_media.parent.mkdir(parents=True, exist_ok=True)
+    source_media.touch()
+
+    async def mock_run(cmd, **kwargs):
+        if cmd[0] == "ffprobe":
+            data = {"format": {"duration": "5000.0", "format_name": "mp4"}}
+            return CompletedProcess(
+                args=[], returncode=0, stdout=json.dumps(data).encode(), stderr=b""
+            )
+
+    fake_context.process_runner.run.side_effect = mock_run
+
+    stage = SourceReadyStage()
+    res = await stage.run(fake_context)
+    assert res.status == StageStatus.FAILED
+    assert "exceeds max allowed" in res.error

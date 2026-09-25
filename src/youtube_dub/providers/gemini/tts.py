@@ -29,6 +29,8 @@ class GeminiTTSProvider(TTSProvider):
         voice: VoiceProfile,
     ) -> bytes:
 
+        if not voice:
+            raise ProviderInvalidRequestError("Voice profile is required")
         if not text.strip():
             raise ProviderInvalidRequestError("Cannot synthesize empty text")
 

@@ -33,3 +33,39 @@ def test_dubbing_project():
     proj = DubbingProject(job_id=job_id, source_language="en", target_language="es")
     assert proj.job_id == job_id
     assert proj.current_stage == PipelineStage.SOURCE_READY
+
+
+import asyncio
+from unittest.mock import MagicMock
+
+from youtube_dub.config.loader import AppConfig
+from youtube_dub.pipeline.context import PipelineContext
+from youtube_dub.pipeline.manifest import JobManifest
+
+
+def test_pipeline_context_cancellation():
+    config = AppConfig(
+        source_language="en",
+        target_language="es",
+        job_root="/tmp",
+        transcription_model="model",
+        translation_model="model",
+        tts_model="model",
+        separation_model="passthrough",
+        api_keys=["k"],
+    )
+    import uuid
+
+    manifest = JobManifest(1, "1.0", uuid.uuid4())
+    context = PipelineContext(
+        job_id=str(manifest.job_id),
+        config=config,
+        manifest=manifest,
+        artifact_store=MagicMock(),
+        process_runner=MagicMock(),
+        logger=MagicMock(),
+    )
+
+    context.cancel_event.set()
+    with pytest.raises(asyncio.CancelledError, match="Pipeline context cancelled"):
+        context.check_cancelled()

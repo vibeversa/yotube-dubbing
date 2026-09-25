@@ -312,3 +312,282 @@ async def test_mix_stage_negative_start_ms(fake_context):
 
     assert res.status == StageStatus.FAILED
     assert "Invalid start_ms < 0" in res.error
+
+
+@pytest.mark.asyncio
+async def test_mix_stage_missing_timing(fake_context):
+    stage = MixStage()
+    res = await stage.run(fake_context)
+    assert res.status == StageStatus.FAILED
+    assert "Timing artifact not found" in res.error
+
+
+@pytest.mark.asyncio
+async def test_mix_stage_missing_translations(fake_context):
+    timing_path = fake_context.artifact_store.path_for(fake_context.job_id, "timing")
+    timing_path.parent.mkdir(parents=True, exist_ok=True)
+    timing_path.touch()
+
+    stage = MixStage()
+    res = await stage.run(fake_context)
+    assert res.status == StageStatus.FAILED
+    assert "Translations artifact not found" in res.error
+
+
+@pytest.mark.asyncio
+async def test_mix_stage_missing_source(fake_context):
+    timing_path = fake_context.artifact_store.path_for(fake_context.job_id, "timing")
+    timing_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(timing_path, "w") as f:
+        json.dump([], f)
+
+    translations_path = fake_context.artifact_store.path_for(
+        fake_context.job_id, "translations"
+    )
+    translations_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(translations_path, "w") as f:
+        json.dump([], f)
+
+    stage = MixStage()
+    res = await stage.run(fake_context)
+    assert res.status == StageStatus.FAILED
+    assert "Source audio missing" in res.error
+
+
+@pytest.mark.asyncio
+async def test_mix_stage_already_mixed(fake_context):
+    timing_path = fake_context.artifact_store.path_for(fake_context.job_id, "timing")
+    timing_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(timing_path, "w") as f:
+        json.dump([], f)
+
+    translations_path = fake_context.artifact_store.path_for(
+        fake_context.job_id, "translations"
+    )
+    translations_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(translations_path, "w") as f:
+        json.dump([], f)
+
+    mix_path = fake_context.artifact_store.path_for(fake_context.job_id, "mix")
+    mix_path.parent.mkdir(parents=True, exist_ok=True)
+    mix_path.touch()
+
+    stage = MixStage()
+    res = await stage.run(fake_context)
+    assert res.status == StageStatus.COMPLETED
+
+
+@pytest.mark.asyncio
+async def test_mix_stage_no_inputs_mixed(fake_context):
+    timing_path = fake_context.artifact_store.path_for(fake_context.job_id, "timing")
+    timing_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(timing_path, "w") as f:
+        json.dump([{"segment_id": "seg-1"}], f)
+
+    translations_path = fake_context.artifact_store.path_for(
+        fake_context.job_id, "translations"
+    )
+    translations_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(translations_path, "w") as f:
+        json.dump([{"segment_id": "seg-1", "start_ms": 100}], f)
+
+    source_audio = fake_context.artifact_store.path_for(
+        fake_context.job_id, "source_audio"
+    )
+    source_audio.parent.mkdir(parents=True, exist_ok=True)
+    source_audio.touch()
+
+    bg_path = fake_context.artifact_store.path_for(fake_context.job_id, "separated_bg")
+    bg_path.parent.mkdir(parents=True, exist_ok=True)
+    bg_path.touch()
+
+    # Note that timed_audio does not exist, so it will be skipped and `inputs` will be empty
+    async def mock_run(cmd, **kwargs):
+        if cmd[0] == "ffmpeg":
+            out = Path(cmd[-1])
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.touch()
+            return CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+
+    fake_context.process_runner.run.side_effect = mock_run
+
+    stage = MixStage()
+    res = await stage.run(fake_context)
+    assert res.status == StageStatus.COMPLETED
+
+
+@pytest.mark.asyncio
+async def test_mix_stage_process_runner_error(fake_context):
+    timing_path = fake_context.artifact_store.path_for(fake_context.job_id, "timing")
+    timing_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(timing_path, "w") as f:
+        json.dump([{"segment_id": "seg-1"}], f)
+
+    translations_path = fake_context.artifact_store.path_for(
+        fake_context.job_id, "translations"
+    )
+    translations_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(translations_path, "w") as f:
+        json.dump([{"segment_id": "seg-1", "start_ms": 100}], f)
+
+    source_audio = fake_context.artifact_store.path_for(
+        fake_context.job_id, "source_audio"
+    )
+    source_audio.parent.mkdir(parents=True, exist_ok=True)
+    source_audio.touch()
+
+    bg_path = fake_context.artifact_store.path_for(fake_context.job_id, "separated_bg")
+    bg_path.parent.mkdir(parents=True, exist_ok=True)
+    bg_path.touch()
+
+    timed_audio = fake_context.artifact_store.path_for(
+        fake_context.job_id, "timing", "seg-1"
+    )
+    timed_audio.parent.mkdir(parents=True, exist_ok=True)
+    timed_audio.touch()
+
+    async def mock_run(cmd, **kwargs):
+        raise ValueError("FFmpeg error")
+
+    fake_context.process_runner.run.side_effect = mock_run
+
+    stage = MixStage()
+    res = await stage.run(fake_context)
+    assert res.status == StageStatus.FAILED
+    assert "FFmpeg error" in res.error
+
+
+@pytest.mark.asyncio
+async def test_mix_stage_separate_vocals(fake_context):
+    timing_path = fake_context.artifact_store.path_for(fake_context.job_id, "timing")
+    timing_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(timing_path, "w") as f:
+        json.dump([], f)
+
+    translations_path = fake_context.artifact_store.path_for(
+        fake_context.job_id, "translations"
+    )
+    translations_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(translations_path, "w") as f:
+        json.dump([], f)
+
+    source_audio = fake_context.artifact_store.path_for(
+        fake_context.job_id, "source_audio"
+    )
+    source_audio.parent.mkdir(parents=True, exist_ok=True)
+    source_audio.touch()
+
+    # Note bg_path does NOT exist so it will run separator
+
+    async def mock_run(cmd, **kwargs):
+        out = Path(cmd[-1])
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.touch()
+        # also touch background.wav
+        bg = fake_context.artifact_store.path_for(fake_context.job_id, "separated_bg")
+        bg.parent.mkdir(parents=True, exist_ok=True)
+        bg.touch()
+        return CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+
+    fake_context.process_runner.run.side_effect = mock_run
+
+    stage = MixStage()
+    res = await stage.run(fake_context)
+    assert res.status == StageStatus.COMPLETED
+
+
+@pytest.mark.asyncio
+async def test_mix_stage_empty_timing_data_mixed(fake_context):
+    timing_path = fake_context.artifact_store.path_for(fake_context.job_id, "timing")
+    timing_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(timing_path, "w") as f:
+        json.dump([], f)
+
+    translations_path = fake_context.artifact_store.path_for(
+        fake_context.job_id, "translations"
+    )
+    translations_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(translations_path, "w") as f:
+        json.dump([], f)
+
+    source_audio = fake_context.artifact_store.path_for(
+        fake_context.job_id, "source_audio"
+    )
+    source_audio.parent.mkdir(parents=True, exist_ok=True)
+    source_audio.touch()
+
+    bg_path = fake_context.artifact_store.path_for(fake_context.job_id, "separated_bg")
+    bg_path.parent.mkdir(parents=True, exist_ok=True)
+    bg_path.touch()
+
+    stage = MixStage()
+    res = await stage.run(fake_context)
+    assert res.status == StageStatus.COMPLETED
+
+
+@pytest.mark.asyncio
+async def test_mix_stage_segment_missing_timing(fake_context):
+    timing_path = fake_context.artifact_store.path_for(fake_context.job_id, "timing")
+    timing_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(timing_path, "w") as f:
+        json.dump([{"segment_id": "seg-2"}], f)
+
+    translations_path = fake_context.artifact_store.path_for(
+        fake_context.job_id, "translations"
+    )
+    translations_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(translations_path, "w") as f:
+        json.dump([{"segment_id": "seg-1", "start_ms": 100}], f)
+
+    source_audio = fake_context.artifact_store.path_for(
+        fake_context.job_id, "source_audio"
+    )
+    source_audio.parent.mkdir(parents=True, exist_ok=True)
+    source_audio.touch()
+
+    bg_path = fake_context.artifact_store.path_for(fake_context.job_id, "separated_bg")
+    bg_path.parent.mkdir(parents=True, exist_ok=True)
+    bg_path.touch()
+
+    stage = MixStage()
+    res = await stage.run(fake_context)
+    assert res.status == StageStatus.COMPLETED
+
+
+@pytest.mark.asyncio
+async def test_mix_stage_missing_timed_audio(fake_context):
+    timing_path = fake_context.artifact_store.path_for(fake_context.job_id, "timing")
+    timing_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(timing_path, "w") as f:
+        json.dump([{"segment_id": "seg-1"}], f)
+
+    translations_path = fake_context.artifact_store.path_for(
+        fake_context.job_id, "translations"
+    )
+    translations_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(translations_path, "w") as f:
+        json.dump([{"segment_id": "seg-1", "start_ms": 100}], f)
+
+    source_audio = fake_context.artifact_store.path_for(
+        fake_context.job_id, "source_audio"
+    )
+    source_audio.parent.mkdir(parents=True, exist_ok=True)
+    source_audio.touch()
+
+    bg_path = fake_context.artifact_store.path_for(fake_context.job_id, "separated_bg")
+    bg_path.parent.mkdir(parents=True, exist_ok=True)
+    bg_path.touch()
+
+    # Leave timed_audio non-existent
+    async def mock_run(cmd, **kwargs):
+        if cmd[0] == "ffmpeg":
+            out = Path(cmd[-1])
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.touch()
+            return CompletedProcess(args=[], returncode=0, stdout=b"", stderr=b"")
+
+    fake_context.process_runner.run.side_effect = mock_run
+
+    stage = MixStage()
+    res = await stage.run(fake_context)
+    assert res.status == StageStatus.COMPLETED
