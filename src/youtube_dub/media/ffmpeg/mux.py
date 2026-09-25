@@ -36,6 +36,8 @@ async def mux_media(
         # Simple re-encode fallback
         cmd.extend(["-c:v", "libx264"])
 
+    tmp_path = output_path.with_suffix(".tmp")
+
     cmd.extend(
         [
             "-c:a",
@@ -43,11 +45,14 @@ async def mux_media(
             "-b:a",
             audio_bitrate,
             "-shortest",  # End when the shortest stream ends
-            str(output_path),
+            str(tmp_path),
         ]
     )
 
     await runner.run(cmd, timeout_s=timeout_s, check=True)
+
+    if tmp_path.exists():
+        tmp_path.replace(output_path)
 
     if not output_path.exists():
         raise ArtifactError(

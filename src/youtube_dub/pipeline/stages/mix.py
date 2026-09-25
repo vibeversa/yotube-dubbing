@@ -63,7 +63,9 @@ class MixStage(PipelineStageRunner):
             mix_path.parent.mkdir(parents=True, exist_ok=True)
 
             if not timing_data:
-                shutil.copy2(bg_path, mix_path)
+                tmp_mix = mix_path.with_suffix(".tmp")
+                shutil.copy2(bg_path, tmp_mix)
+                tmp_mix.replace(mix_path)
                 return StageResult(StageStatus.COMPLETED)
 
             # Build a complex filter mapping
@@ -100,7 +102,9 @@ class MixStage(PipelineStageRunner):
                     input_idx += 1
 
                 if not inputs:
-                    shutil.copy2(bg_path, mix_path)
+                    tmp_mix = mix_path.with_suffix(".tmp")
+                    shutil.copy2(bg_path, tmp_mix)
+                    tmp_mix.replace(mix_path)
                     return StageResult(StageStatus.COMPLETED)
 
                 # amix all delayed segments together into one vocal track

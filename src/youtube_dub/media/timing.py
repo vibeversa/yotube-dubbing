@@ -47,11 +47,14 @@ async def apply_timing_fit(
 
     chain = calculate_atempo_chain(ratio)
 
+    tmp_path = output_path.with_suffix(".tmp")
+
     if len(chain) == 1 and abs(chain[0] - 1.0) < 1e-4:
         # No modification needed, just copy
         import shutil
 
-        shutil.copy2(input_path, output_path)
+        shutil.copy2(input_path, tmp_path)
+        tmp_path.replace(output_path)
         return output_path
 
     # Build filter string
@@ -64,10 +67,13 @@ async def apply_timing_fit(
         str(input_path),
         "-filter:a",
         filter_str,
-        str(output_path),
+        str(tmp_path),
     ]
 
     await runner.run(cmd, timeout_s=timeout_s, check=True)
+
+    if tmp_path.exists():
+        tmp_path.replace(output_path)
 
     if not output_path.exists():
         raise ArtifactError(f"Timing fit failed. Artifact missing at {output_path}")
