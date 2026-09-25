@@ -54,6 +54,13 @@ async def test_translate_success_preserves_timeline(fake_executor):
     assert result[1].start_ms == 600
     assert result[1].end_ms == 1000
 
+    # Verify response schema was passed
+    call_kwargs = mock_client.aio.models.generate_content.call_args.kwargs
+    assert "config" in call_kwargs
+    config = call_kwargs["config"]
+    assert config.response_schema is not None
+    assert config.response_schema["type"] == "array"
+
 
 @pytest.mark.asyncio
 async def test_translate_missing_segment_response(fake_executor):

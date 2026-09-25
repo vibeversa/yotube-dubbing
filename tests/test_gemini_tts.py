@@ -1,5 +1,3 @@
-import base64
-import json
 from unittest.mock import MagicMock
 
 import pytest
@@ -35,9 +33,15 @@ async def test_synthesize_success(fake_executor):
 
     mock_client = MagicMock()
     mock_response = MagicMock()
-    mock_response.text = json.dumps(
-        {"audio_base64": base64.b64encode(b"audio").decode()}
-    )
+
+    mock_part = MagicMock()
+    mock_part.inline_data.data = b"audio"
+    mock_content = MagicMock()
+    mock_content.parts = [mock_part]
+    mock_candidate = MagicMock()
+    mock_candidate.content = mock_content
+    mock_response.candidates = [mock_candidate]
+
     mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
     provider = GeminiTTSProvider(
@@ -46,6 +50,15 @@ async def test_synthesize_success(fake_executor):
 
     result = await provider.synthesize("hello", voice=VoiceProfile("voice1"))
     assert result == b"audio"
+
+    # Verify config was passed correctly
+    call_kwargs = mock_client.aio.models.generate_content.call_args.kwargs
+    assert "config" in call_kwargs
+    config = call_kwargs["config"]
+    assert config.response_modalities == ["AUDIO"]
+    assert (
+        config.speech_config.voice_config.prebuilt_voice_config.voice_name == "voice1"
+    )
 
 
 @pytest.mark.asyncio
@@ -107,25 +120,18 @@ async def test_synthesize_api_errors(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "response_text",
-    [
-        "not json",
-        "{}",
-        '{"audio_base64": null}',
-    ],
-)
-async def test_synthesize_malformed_response(fake_executor, response_text):
+async def test_synthesize_malformed_response(fake_executor):
     from unittest.mock import AsyncMock
 
     mock_client = MagicMock()
     mock_response = MagicMock()
-    mock_response.text = response_text
+    mock_response.candidates = []
+
     mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
     provider = GeminiTTSProvider(
         fake_executor, sdk_client_factory=lambda **kwargs: mock_client
     )
 
-    with pytest.raises(ProviderError):
+    with pytest.raises(ProviderError, match="No audio returned in response candidates"):
         await provider.synthesize("test", voice=VoiceProfile("voice1"))
