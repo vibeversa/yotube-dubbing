@@ -8,7 +8,7 @@ from youtube_dub.domain.errors import ConfigurationError
 
 
 def test_load_config_defaults():
-    with patch.dict(os.environ, {}, clear=True):
+    with patch.dict(os.environ, {"GEMINI_API_KEY": "test-key"}, clear=True):
         config = load_config()
         assert config.source_language == "en"
         assert config.target_language == "es"
@@ -18,6 +18,7 @@ def test_load_config_defaults():
 
 def test_load_config_from_env():
     env = {
+        "GEMINI_API_KEY": "test-key",
         "DUB_SOURCE_LANGUAGE": "fr",
         "DUB_TARGET_LANGUAGE": "de",
         "DUB_MAX_CONCURRENT_TTS_CALLS": "10",
@@ -42,6 +43,20 @@ def test_config_validation():
             tts_model="model",
             separation_model="passthrough",
             api_keys=["k"],
+        )
+
+
+def test_config_validation_api_keys():
+    with pytest.raises(ConfigurationError, match="api_keys must be set"):
+        AppConfig(
+            source_language="en",
+            target_language="es",
+            job_root="data/jobs",
+            transcription_model="model",
+            translation_model="model",
+            tts_model="model",
+            separation_model="passthrough",
+            api_keys=[],
         )
 
 

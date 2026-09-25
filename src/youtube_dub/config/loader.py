@@ -17,8 +17,6 @@ class AppConfig:
     transcription_fallbacks: list[str] = field(default_factory=list)
     translation_fallbacks: list[str] = field(default_factory=list)
     tts_fallbacks: list[str] = field(default_factory=list)
-    repair_model: str | None = None
-    repair_fallbacks: list[str] = field(default_factory=list)
     max_duration_s: int = 3600
     chunk_ms: int = 60000
     output_audio_bitrate: str = "192k"
@@ -35,6 +33,8 @@ class AppConfig:
             raise ConfigurationError("job_root must be set")
         if not self.transcription_model:
             raise ConfigurationError("transcription_model must be set")
+        if not self.api_keys:
+            raise ConfigurationError("api_keys must be set")
 
 
 def load_config() -> AppConfig:
@@ -50,8 +50,6 @@ def load_config() -> AppConfig:
     tts_model = os.environ.get("DUB_TTS_MODEL", "google-tts")
 
     api_keys = get_list("GEMINI_API_KEY")
-    if not api_keys:
-        api_keys = ["DUMMY_KEY"]
 
     source_language = os.environ.get("DUB_SOURCE_LANGUAGE", "en")
     target_language = os.environ.get("DUB_TARGET_LANGUAGE", "es")
@@ -71,8 +69,6 @@ def load_config() -> AppConfig:
         transcription_fallbacks=get_list("DUB_TRANSCRIPTION_FALLBACKS"),
         translation_fallbacks=get_list("DUB_TRANSLATION_FALLBACKS"),
         tts_fallbacks=get_list("DUB_TTS_FALLBACKS"),
-        repair_model=os.environ.get("DUB_REPAIR_MODEL"),
-        repair_fallbacks=get_list("DUB_REPAIR_FALLBACKS"),
         max_duration_s=int(os.environ.get("DUB_MAX_DURATION_S", "3600")),
         chunk_ms=int(os.environ.get("DUB_CHUNK_MS", "60000")),
         output_audio_bitrate=os.environ.get("DUB_OUTPUT_AUDIO_BITRATE", "192k"),
