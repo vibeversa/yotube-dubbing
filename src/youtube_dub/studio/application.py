@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import shutil
 import uuid
 from pathlib import Path
 
@@ -148,3 +149,70 @@ class StudioApplication:
     def resume_job(self, job_id: str) -> None:
         """Resume acts exactly like run."""
         self.run_job(job_id)
+
+    def ingest_media(self, job_id: str, local_path: str) -> None:
+        source_path = Path(local_path)
+        if not source_path.exists() or not source_path.is_file():
+            raise JobError(f"Local media file not found: {local_path}")
+
+        target_path = self.artifact_store.path_for(job_id, "source_media")
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_path, target_path)
+        self.logger.info(f"Ingested media from {local_path} to {target_path}")
+
+    def download_youtube_media(self, job_id: str, url: str) -> None:
+        # Check for yt-dlp or youtube-dl
+        downloader = shutil.which("yt-dlp") or shutil.which("youtube-dl")
+        if not downloader:
+            raise JobError(
+                "Neither yt-dlp nor youtube-dl found in PATH. Cannot download YouTube media."
+            )
+
+        target_path = self.artifact_store.path_for(job_id, "source_media")
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+        cmd = [downloader, "-f", "best[ext=mp4]/best", "-o", str(target_path), url]
+
+        self.logger.info(f"Downloading YouTube media from {url} using {downloader}")
+
+        # We need an async loop since we are in sync context here?
+        # ProcessRunner uses async. We should run it.
+        async def run_download():
+            await self.process_runner.run(cmd, check=True)
+
+        try:
+            asyncio.run(run_download())
+        except Exception as e:
+            raise JobError(f"Failed to download media: {e}")
+
+        if not target_path.exists():
+            raise JobError("Download succeeded but artifact not found.")
+
+    def validate_job(self, job_id: str) -> None:
+        manifest = self.get_job(job_id)
+        self.logger.info(f"Validating job {job_id}...")
+        self.logger.info(f"Status: {manifest.status.value}")
+        self.logger.info(f"Current Stage: {manifest.current_stage.value}")
+
+        errors = []
+        for stage_name, record in manifest.stages.items():
+            if record.status == "failed":
+                errors.append(f"Stage {stage_name} failed: {record.error}")
+
+        if errors:
+            raise JobError("\n".join(errors))
+
+        # Check if basic artifacts exist based on stage
+        source_media_exists = self.artifact_store.exists(job_id, "source_media")
+        self.logger.info(f"Source media exists: {source_media_exists}")
+
+    def clean_job(self, job_id: str) -> None:
+        if job_id in self._active_tasks and not self._active_tasks[job_id].done():
+            raise JobError(f"Job {job_id} is currently running. Cancel it first.")
+
+        job_dir = self.artifact_store.get_job_dir(job_id)
+        if job_dir.exists():
+            shutil.rmtree(job_dir)
+            self.logger.info(f"Cleaned job directory {job_dir}")
+        else:
+            self.logger.info(f"Job directory {job_dir} does not exist.")

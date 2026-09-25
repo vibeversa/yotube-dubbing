@@ -1,6 +1,8 @@
 import argparse
 import asyncio
+import logging
 import sys
+import traceback
 
 from youtube_dub.domain.errors import JobError, ManifestError
 from youtube_dub.factory import create_studio_application
@@ -15,8 +17,16 @@ def main() -> None:
     parser.add_argument("--job-id", help="Job ID for operations", required=False)
     parser.add_argument("--source", help="Source language", default="en")
     parser.add_argument("--target", help="Target language", default="es")
+    parser.add_argument("--media", help="Local media file for create", required=False)
+    parser.add_argument("--url", help="YouTube URL for create", required=False)
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable verbose debug logging"
+    )
 
     args = parser.parse_args()
+
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
 
     try:
         studio = create_studio_application()
@@ -28,6 +38,12 @@ def main() -> None:
         if args.command == "create":
             manifest = studio.create_job(args.source, args.target)
             print(f"Created job {manifest.job_id}")
+            if args.media:
+                print(f"Ingesting local media from {args.media}...")
+                studio.ingest_media(str(manifest.job_id), args.media)
+            elif args.url:
+                print(f"Downloading media from {args.url}...")
+                studio.download_youtube_media(str(manifest.job_id), args.url)
 
         elif args.command == "run":
             if not args.job_id:
@@ -74,19 +90,36 @@ def main() -> None:
             studio.cancel_job(args.job_id)
             print(f"Job {args.job_id} cancellation requested.")
 
+        elif args.command == "validate":
+            if not args.job_id:
+                print("--job-id is required for validate", file=sys.stderr)
+                sys.exit(1)
+            studio.validate_job(args.job_id)
+            print(f"Job {args.job_id} validated successfully.")
+
+        elif args.command == "clean":
+            if not args.job_id:
+                print("--job-id is required for clean", file=sys.stderr)
+                sys.exit(1)
+            studio.clean_job(args.job_id)
+            print(f"Job {args.job_id} cleaned.")
+
         else:
             print(
                 f"Command '{args.command}' not fully implemented yet.", file=sys.stderr
             )
 
-    except ManifestError as e:
-        print(f"Job error: {e}", file=sys.stderr)
-        sys.exit(1)
-    except JobError as e:
-        print(f"Action error: {e}", file=sys.stderr)
+    except (ManifestError, JobError) as e:
+        if args.verbose:
+            traceback.print_exc()
+        else:
+            print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
-        print(f"Unexpected error: {e}", file=sys.stderr)
+        if args.verbose:
+            traceback.print_exc()
+        else:
+            print(f"Unexpected error: {e}", file=sys.stderr)
         sys.exit(1)
 
 
