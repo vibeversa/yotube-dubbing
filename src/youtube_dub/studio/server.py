@@ -75,6 +75,8 @@ def get_studio(request: Request) -> StudioApplication:
 class CreateJobRequest(BaseModel):
     source_language: str
     target_language: str
+    source_url: str | None = None
+    local_path: str | None = None
 
 
 @app.post("/api/jobs", response_model=JobResponse)
@@ -83,9 +85,16 @@ async def create_job(
 ):
     try:
         manifest = studio.create_job(req.source_language, req.target_language)
+        if req.source_url:
+            studio.download_youtube_media(str(manifest.job_id), req.source_url)
+        elif req.local_path:
+            studio.ingest_media(str(manifest.job_id), req.local_path)
         return _build_job_response(manifest)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        # Avoid exposing internal exception details directly
+        raise HTTPException(
+            status_code=500, detail="Failed to create or initialize job."
+        )
 
 
 @app.get("/api/jobs", response_model=list[JobResponse])

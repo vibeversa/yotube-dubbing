@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "pipeline_version": "1.0",
+  "job_id": "8a6a9cc2-d938-4ac0-a870-bcb9d199f861",
+  "source_language": "en",
+  "target_language": "es",
+  "status": "CREATED",
+  "current_stage": "SOURCE_READY",
+  "created_at": "2026-09-25T09:01:29.369789+00:00",
+  "updated_at": "2026-09-25T09:01:29.370331+00:00",
+  "stages": {
+    "SOURCE_READY": {
+      "stage": "SOURCE_READY",
+      "status": "PENDING",
+      "started_at": null,
+      "completed_at": null,
+      "attempt_count": 0,
+      "artifacts": [],
+      "error": null
+    },
+    "TRANSCRIBED": {
+      "stage": "TRANSCRIBED",
+      "status": "PENDING",
+      "started_at": null,
+      "completed_at": null,
+      "attempt_count": 0,
+      "artifacts": [],
+      "error": null
+    },
+    "SEGMENTED": {
+      "stage": "SEGMENTED",
+      "status": "PENDING",
+      "started_at": null,
+      "completed_at": null,
+      "attempt_count": 0,
+      "artifacts": [],
+      "error": null
+    },
+    "TRANSLATED": {
+      "stage": "TRANSLATED",
+      "status": "PENDING",
+      "started_at": null,
+      "completed_at": null,
+      "attempt_count": 0,
+      "artifacts": [],
+      "error": null
+    },
+    "TTS_PARTIAL": {
+      "stage": "TTS_PARTIAL",
+      "status": "PENDING",
+      "started_at": null,
+      "completed_at": null,
+      "attempt_count": 0,
+      "artifacts": [],
+      "error": null
+    },
+    "TIMED": {
+      "stage": "TIMED",
+      "status": "PENDING",
+      "started_at": null,
+      "completed_at": null,
+      "attempt_count": 0,
+      "artifacts": [],
+      "error": null
+    },
+    "MIXED": {
+      "stage": "MIXED",
+      "status": "PENDING",
+      "started_at": null,
+      "completed_at": null,
+      "attempt_count": 0,
+      "artifacts": [],
+      "error": null
+    },
+    "RENDERED": {
+      "stage": "RENDERED",
+      "status": "PENDING",
+      "started_at": null,
+      "completed_at": null,
+      "attempt_count": 0,
+      "artifacts": [],
+      "error": null
+    },
+    "COMPLETED": {
+      "stage": "COMPLETED",
+      "status": "PENDING",
+      "started_at": null,
+      "completed_at": null,
+      "attempt_count": 0,
+      "artifacts": [],
+      "error": null
+    }
+  }
+}
