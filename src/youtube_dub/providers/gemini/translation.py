@@ -1,6 +1,7 @@
 import json
 
 from google import genai
+from google.genai import types
 
 from youtube_dub.domain.errors import ProviderError
 from youtube_dub.domain.models import DubbingSegment
@@ -27,30 +28,29 @@ class GeminiTranslationProvider(TranslationProvider):
         async def _call_gemini(model_name: str, api_key: str) -> list[DubbingSegment]:
             client = self.sdk_client_factory(api_key=api_key)
 
-            response_text = await self._mock_api_call(
-                client, model_name, segments, target_language
-            )
-            return self._parse_response(segments, response_text)
-
-        return await self.executor.execute(_call_gemini)
-
-    async def _mock_api_call(
-        self,
-        client: genai.Client,
-        model: str,
-        segments: list[DubbingSegment],
-        lang: str,
-    ) -> str:
-        # Overridden in tests
-        return json.dumps(
-            [
-                {
-                    "segment_id": s.segment_id,
-                    "translated_text": s.source_text + " translated",
-                }
+            # Prepare payload
+            payload = [
+                {"segment_id": s.segment_id, "source_text": s.source_text}
                 for s in segments
             ]
-        )
+
+            prompt = (
+                f"Translate the following text to {target_language}. "
+                "Return a JSON array of objects with 'segment_id' and 'translated_text'.\n\n"
+                f"{json.dumps(payload)}"
+            )
+
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                ),
+            )
+
+            return self._parse_response(segments, response.text)
+
+        return await self.executor.execute(_call_gemini)
 
     def _parse_response(
         self, original_segments: list[DubbingSegment], text: str

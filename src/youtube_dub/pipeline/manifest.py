@@ -21,6 +21,8 @@ class JobManifest:
     schema_version: int
     pipeline_version: str
     job_id: UUID
+    source_language: str = "en"
+    target_language: str = "es"
     status: JobStatus = JobStatus.CREATED
     current_stage: PipelineStage = PipelineStage.SOURCE_READY
     created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())

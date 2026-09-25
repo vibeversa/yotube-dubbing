@@ -22,22 +22,24 @@ def fake_executor():
 
 @pytest.mark.asyncio
 async def test_translate_success_preserves_timeline(fake_executor):
-    provider = GeminiTranslationProvider(fake_executor, sdk_client_factory=MagicMock())
+    mock_client = MagicMock()
+    mock_response = MagicMock()
+    mock_response.text = json.dumps(
+        [
+            {"segment_id": "seg-1", "translated_text": "hola"},
+            {"segment_id": "seg-2", "translated_text": "mundo"},
+        ]
+    )
+    mock_client.models.generate_content.return_value = mock_response
+
+    provider = GeminiTranslationProvider(
+        fake_executor, sdk_client_factory=lambda **kwargs: mock_client
+    )
 
     segments = [
         DubbingSegment("seg-1", 100, 500, "hello"),
         DubbingSegment("seg-2", 600, 1000, "world"),
     ]
-
-    async def mock_call(client, model, segs, lang):
-        return json.dumps(
-            [
-                {"segment_id": "seg-1", "translated_text": "hola"},
-                {"segment_id": "seg-2", "translated_text": "mundo"},
-            ]
-        )
-
-    provider._mock_api_call = mock_call
 
     result = await provider.translate(segments, target_language="es")
 
@@ -53,14 +55,18 @@ async def test_translate_success_preserves_timeline(fake_executor):
 
 @pytest.mark.asyncio
 async def test_translate_missing_segment_response(fake_executor):
-    provider = GeminiTranslationProvider(fake_executor, sdk_client_factory=MagicMock())
+    mock_client = MagicMock()
+    mock_response = MagicMock()
+    mock_response.text = json.dumps(
+        [{"segment_id": "seg-wrong", "translated_text": "hola"}]
+    )
+    mock_client.models.generate_content.return_value = mock_response
+
+    provider = GeminiTranslationProvider(
+        fake_executor, sdk_client_factory=lambda **kwargs: mock_client
+    )
 
     segments = [DubbingSegment("seg-1", 100, 500, "hello")]
-
-    async def mock_call(client, model, segs, lang):
-        return json.dumps([{"segment_id": "seg-wrong", "translated_text": "hola"}])
-
-    provider._mock_api_call = mock_call
 
     with pytest.raises(ProviderError, match="Missing translation for segment seg-1"):
         await provider.translate(segments, target_language="es")

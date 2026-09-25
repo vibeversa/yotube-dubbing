@@ -27,20 +27,22 @@ async def test_transcribe_success(fake_executor, tmp_path):
     audio_file = tmp_path / "test.wav"
     audio_file.write_text("fake audio content")
 
+    mock_client = MagicMock()
+    mock_client.files.upload.return_value = MagicMock(name="uploaded_file")
+    mock_response = MagicMock()
+    mock_response.text = json.dumps([{"word": "hello", "start_ms": 0, "end_ms": 500}])
+    mock_client.models.generate_content.return_value = mock_response
+
     provider = GeminiTranscriptionProvider(
-        fake_executor, sdk_client_factory=MagicMock()
+        fake_executor, sdk_client_factory=lambda **kwargs: mock_client
     )
-
-    # Override the mock API call for testing
-    async def mock_call(client, model, path, lang):
-        return json.dumps([{"word": "hello", "start_ms": 0, "end_ms": 500}])
-
-    provider._mock_api_call = mock_call
 
     result = await provider.transcribe(audio_file, language="en")
 
     assert len(result) == 1
     assert result[0] == WordTimestamp("hello", 0.0, 500.0)
+    mock_client.files.upload.assert_called_once()
+    mock_client.models.generate_content.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -58,14 +60,15 @@ async def test_transcribe_malformed_response(fake_executor, tmp_path):
     audio_file = tmp_path / "test.wav"
     audio_file.write_text("fake")
 
+    mock_client = MagicMock()
+    mock_client.files.upload.return_value = MagicMock()
+    mock_response = MagicMock()
+    mock_response.text = "not json"
+    mock_client.models.generate_content.return_value = mock_response
+
     provider = GeminiTranscriptionProvider(
-        fake_executor, sdk_client_factory=MagicMock()
+        fake_executor, sdk_client_factory=lambda **kwargs: mock_client
     )
-
-    async def mock_call(client, model, path, lang):
-        return "not json"
-
-    provider._mock_api_call = mock_call
 
     with pytest.raises(ProviderError, match="Malformed transcription response"):
         await provider.transcribe(audio_file)
