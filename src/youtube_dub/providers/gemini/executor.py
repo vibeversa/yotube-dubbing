@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 from collections.abc import Callable, Coroutine
 from typing import Any
 
@@ -51,11 +52,16 @@ class GeminiCallExecutor:
             current_model = self.models[model_index]
             attempt = 0
 
+            # Keep track of how many unique keys we've tried for this specific model run
+            # to avoid spinning indefinitely if all keys are rate-limited simultaneously.
+            tried_keys = set()
+
             while attempt < self.max_attempts:
-                if self.key_pool.is_exhausted():
+                if not self.key_pool.has_keys():
                     raise ProviderError("All API keys exhausted across models")
 
-                current_key = self.key_pool.get_current_key()
+                current_key = self.key_pool.get_next_key()
+                tried_keys.add(current_key)
 
                 try:
                     logger.debug(
@@ -65,15 +71,22 @@ class GeminiCallExecutor:
 
                 except (ProviderQuotaError, ProviderRateLimitError) as e:
                     logger.warning(
-                        f"Quota/Rate limit hit for {current_model}: {e}. Rotating key."
+                        f"Quota/Rate limit hit for {current_model}: {e}. Trying next key."
                     )
-                    self.key_pool.rotate()
-                    if self.key_pool.is_exhausted():
+
+                    # If we've tried all currently available keys for this model loop,
+                    # we should stop spinning and fall back to the next model.
+                    available_keys = self.key_pool.get_all_keys()
+                    if not available_keys or set(available_keys).issubset(tried_keys):
                         logger.warning(
-                            f"Key pool exhausted on {current_model}. Moving to next model."
+                            f"All available keys tried on {current_model}. Moving to next model."
                         )
-                        break  # Break out to next model if keys exhausted
+                        break
+
                     # Do not increment attempt for quota on a single key, just try next key on same model
+                    # But we'll add a small delay to prevent tight loops when multiple coroutines hit rate limits
+                    await self._sleep(0.1)
+                    continue
 
                 except ProviderTransientError as e:
                     attempt += 1
@@ -86,14 +99,17 @@ class GeminiCallExecutor:
                     delay = min(
                         self.max_delay, self.initial_delay * (2 ** (attempt - 1))
                     )
-                    # add jitter here if needed
-                    logger.info(f"Transient error. Retrying in {delay}s...")
-                    await self._sleep(delay)
+                    # Add jitter
+                    actual_delay = delay + random.uniform(0, self.jitter * delay)
+                    logger.info(f"Transient error. Retrying in {actual_delay:.2f}s...")
+                    await self._sleep(actual_delay)
 
                 except ProviderAuthenticationError as e:
-                    logger.error(f"Authentication error: {e}. Rotating key.")
-                    self.key_pool.rotate()
-                    if self.key_pool.is_exhausted():
+                    logger.error(
+                        f"Authentication error: {e}. Invalidating key globally."
+                    )
+                    self.key_pool.invalidate_key(current_key)
+                    if not self.key_pool.has_keys():
                         break
 
                 except ProviderInvalidRequestError as e:
@@ -114,8 +130,8 @@ class GeminiCallExecutor:
             if model_index < len(self.models):
                 logger.info(f"Falling back to model {self.models[model_index]}")
 
-            # If keys are exhausted, we can't try any more models.
-            if self.key_pool.is_exhausted():
+            # If keys are permanently exhausted globally, we can't try any more models.
+            if not self.key_pool.has_keys():
                 raise ProviderError("All models and keys exhausted")
 
         raise ProviderError("All models and keys exhausted")
