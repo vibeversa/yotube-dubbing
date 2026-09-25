@@ -23,12 +23,14 @@ def fake_executor():
 
 @pytest.mark.asyncio
 async def test_synthesize_success(fake_executor):
+    from unittest.mock import AsyncMock
+
     mock_client = MagicMock()
     mock_response = MagicMock()
     mock_response.text = json.dumps(
         {"audio_base64": base64.b64encode(b"audio").decode()}
     )
-    mock_client.models.generate_content.return_value = mock_response
+    mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
     provider = GeminiTTSProvider(
         fake_executor, sdk_client_factory=lambda **kwargs: mock_client

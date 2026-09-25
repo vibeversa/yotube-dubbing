@@ -1,9 +1,18 @@
 import base64
+import json
 
 from google import genai
 from google.genai import types
+from google.genai.errors import APIError
 
-from youtube_dub.domain.errors import ProviderError, ProviderInvalidRequestError
+from youtube_dub.domain.errors import (
+    ProviderAuthenticationError,
+    ProviderError,
+    ProviderInvalidRequestError,
+    ProviderQuotaError,
+    ProviderRateLimitError,
+    ProviderTransientError,
+)
 from youtube_dub.domain.models import VoiceProfile
 from youtube_dub.providers.base import TTSProvider
 from youtube_dub.providers.gemini.executor import GeminiCallExecutor
@@ -33,20 +42,33 @@ class GeminiTTSProvider(TTSProvider):
                 f"{text}"
             )
 
-            response = client.models.generate_content(
-                model=model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                ),
-            )
-
             try:
-                import json
+                response = await client.aio.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                    ),
+                )
 
                 data = json.loads(response.text)
                 b64_str = data["audio_base64"]
                 return base64.b64decode(b64_str)
+
+            except APIError as e:
+                # Map SDK errors to domain errors
+                if e.code == 429:
+                    if "quota" in str(e).lower():
+                        raise ProviderQuotaError(str(e))
+                    raise ProviderRateLimitError(str(e))
+                elif e.code in [401, 403]:
+                    raise ProviderAuthenticationError(str(e))
+                elif e.code in [500, 502, 503, 504]:
+                    raise ProviderTransientError(str(e))
+                elif e.code == 400:
+                    raise ProviderInvalidRequestError(str(e))
+                else:
+                    raise ProviderError(str(e))
             except (json.JSONDecodeError, KeyError, ValueError) as e:
                 raise ProviderError(f"Malformed TTS response: {e}")
 

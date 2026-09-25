@@ -105,6 +105,7 @@ class ManifestStore:
 class JobArtifactStore:
     def __init__(self, manifest_store: ManifestStore):
         self.job_root = manifest_store.job_root
+        self.manifest_store = manifest_store
 
     def get_job_dir(self, job_id: str) -> Path:
         return self.job_root / job_id

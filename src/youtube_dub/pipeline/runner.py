@@ -1,7 +1,7 @@
 import asyncio
 from datetime import UTC, datetime
 
-from youtube_dub.domain.enums import JobStatus, StageStatus
+from youtube_dub.domain.enums import JobStatus, PipelineStage, StageStatus
 from youtube_dub.pipeline.context import PipelineContext
 from youtube_dub.pipeline.listeners import StageListenerRegistry
 from youtube_dub.pipeline.stages.base import PipelineStageRunner
@@ -24,7 +24,6 @@ class PipelineRunner:
 
         if manifest.status in [
             JobStatus.COMPLETED,
-            JobStatus.FAILED,
             JobStatus.CANCELLED,
         ]:
             return
@@ -88,6 +87,13 @@ class PipelineRunner:
                     return
 
             # All stages complete
+            if PipelineStage.COMPLETED.name in manifest.stages:
+                manifest.stages[
+                    PipelineStage.COMPLETED.name
+                ].status = StageStatus.COMPLETED
+                manifest.stages[
+                    PipelineStage.COMPLETED.name
+                ].completed_at = datetime.now(UTC).isoformat()
             manifest.status = JobStatus.COMPLETED
             self._save_manifest(manifest)
             self.listeners.notify_job_status(manifest)

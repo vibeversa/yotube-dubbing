@@ -13,7 +13,18 @@ uv sync
 Use environment variables or CLI arguments (e.g. `DUB_SOURCE_LANGUAGE`, `DUB_TARGET_LANGUAGE`).
 
 ## Supported commands
-(Coming soon) `create`, `run`, `status`, `resume`, `cancel`, `validate`, `clean`
+- `uv run youtube-dub create --source en --target es`
+- `uv run youtube-dub run --job-id <uuid>`
+- `uv run youtube-dub status --job-id <uuid>`
+- `uv run youtube-dub resume --job-id <uuid>`
+- `uv run youtube-dub cancel --job-id <uuid>`
+
+## Web UI
+Run the Studio server using Uvicorn:
+```bash
+uv run uvicorn youtube_dub.studio.server:app --reload
+```
+Navigate to `http://localhost:8000/` to access the graphical job manager.
 
 ## Pipeline Stage Order
 ```text
