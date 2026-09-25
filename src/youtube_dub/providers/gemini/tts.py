@@ -1,4 +1,3 @@
-import base64
 import json
 
 from google import genai
@@ -36,24 +35,41 @@ class GeminiTTSProvider(TTSProvider):
         async def _call_gemini(model_name: str, api_key: str) -> bytes:
             client = self.sdk_client_factory(api_key=api_key)
 
-            prompt = (
-                f"Synthesize the following text into spoken audio using a voice resembling {voice.name}. "
-                "Return the raw audio bytes as a base64 encoded string in a JSON object under the key 'audio_base64'.\n\n"
-                f"{text}"
-            )
+            prompt = text
 
             try:
                 response = await client.aio.models.generate_content(
                     model=model_name,
                     contents=prompt,
                     config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
+                        response_modalities=["AUDIO"],
+                        speech_config=types.SpeechConfig(
+                            voice_config=types.VoiceConfig(
+                                prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                                    voice_name=voice.name,
+                                )
+                            )
+                        ),
                     ),
                 )
 
-                data = json.loads(response.text)
-                b64_str = data["audio_base64"]
-                return base64.b64decode(b64_str)
+                if (
+                    not response.candidates
+                    or not response.candidates[0].content
+                    or not response.candidates[0].content.parts
+                ):
+                    raise ProviderError("No audio returned in response candidates")
+
+                audio_bytes = None
+                for part in response.candidates[0].content.parts:
+                    if part.inline_data and part.inline_data.data:
+                        audio_bytes = part.inline_data.data
+                        break
+
+                if not audio_bytes:
+                    raise ProviderError("No inline audio data found in response")
+
+                return audio_bytes
 
             except APIError as e:
                 # Map SDK errors to domain errors

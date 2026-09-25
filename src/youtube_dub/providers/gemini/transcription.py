@@ -52,6 +52,18 @@ class GeminiTranscriptionProvider(TranscriptionProvider):
                     contents=[uploaded_file, prompt],
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
+                        response_schema={
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "word": {"type": "string"},
+                                    "start_ms": {"type": "number"},
+                                    "end_ms": {"type": "number"},
+                                },
+                                "required": ["word", "start_ms", "end_ms"],
+                            },
+                        },
                     ),
                 )
 
@@ -86,13 +98,41 @@ class GeminiTranscriptionProvider(TranscriptionProvider):
     def _parse_response(self, text: str) -> list[WordTimestamp]:
         try:
             data = json.loads(text)
-            return [
-                WordTimestamp(
-                    word=item["word"],
-                    start_ms=float(item["start_ms"]),
-                    end_ms=float(item["end_ms"]),
+            if not isinstance(data, list):
+                raise ProviderError("Transcription response is not a JSON array")
+
+            timestamps = []
+            for item in data:
+                if "word" not in item or "start_ms" not in item or "end_ms" not in item:
+                    raise ProviderError("Missing expected fields in transcription word")
+
+                word = str(item["word"])
+                if not word:
+                    raise ProviderError("Word cannot be empty")
+
+                start_ms = float(item["start_ms"])
+                end_ms = float(item["end_ms"])
+
+                if start_ms < 0:
+                    raise ProviderError(
+                        f"Invalid timing for word '{word}': start_ms must be >= 0"
+                    )
+                if end_ms < start_ms:
+                    raise ProviderError(
+                        f"Invalid timing for word '{word}': end_ms must be >= start_ms"
+                    )
+
+                timestamps.append(
+                    WordTimestamp(
+                        word=word,
+                        start_ms=start_ms,
+                        end_ms=end_ms,
+                    )
                 )
-                for item in data
-            ]
+
+            # Guarantee deterministic order and timing logic
+            timestamps.sort(key=lambda w: w.start_ms)
+
+            return timestamps
         except (json.JSONDecodeError, KeyError, ValueError) as e:
             raise ProviderError(f"Malformed transcription response: {e}")

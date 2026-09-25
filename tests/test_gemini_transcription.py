@@ -49,6 +49,13 @@ async def test_transcribe_success(fake_executor, tmp_path):
     mock_client.aio.files.upload.assert_called_once()
     mock_client.aio.models.generate_content.assert_called_once()
 
+    # Verify response schema was passed
+    call_kwargs = mock_client.aio.models.generate_content.call_args.kwargs
+    assert "config" in call_kwargs
+    config = call_kwargs["config"]
+    assert config.response_schema is not None
+    assert config.response_schema["type"] == "array"
+
 
 @pytest.mark.asyncio
 async def test_transcribe_missing_file(fake_executor):

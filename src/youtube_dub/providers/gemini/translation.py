@@ -54,6 +54,17 @@ class GeminiTranslationProvider(TranslationProvider):
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
+                        response_schema={
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "segment_id": {"type": "string"},
+                                    "translated_text": {"type": "string"},
+                                },
+                                "required": ["segment_id", "translated_text"],
+                            },
+                        },
                     ),
                 )
                 return self._parse_response(segments, response.text)
@@ -79,9 +90,21 @@ class GeminiTranslationProvider(TranslationProvider):
     ) -> list[DubbingSegment]:
         try:
             data = json.loads(text)
-            translation_map = {
-                item["segment_id"]: item["translated_text"] for item in data
-            }
+            if not isinstance(data, list):
+                raise ProviderError("Translation response is not a JSON array")
+
+            translation_map = {}
+            for item in data:
+                if "segment_id" not in item or "translated_text" not in item:
+                    raise ProviderError("Missing expected fields in translation item")
+
+                seg_id = item["segment_id"]
+                translated_text = item["translated_text"]
+
+                if seg_id in translation_map:
+                    raise ProviderError(f"Duplicate translation for segment {seg_id}")
+
+                translation_map[seg_id] = translated_text
 
             translated_segments = []
             for seg in original_segments:
@@ -101,6 +124,12 @@ class GeminiTranslationProvider(TranslationProvider):
                         status=seg.status,
                     )
                 )
+
+            if len(translated_segments) != len(original_segments):
+                raise ProviderError(
+                    "Number of translated segments does not match input"
+                )
+
             return translated_segments
         except (json.JSONDecodeError, KeyError) as e:
             raise ProviderError(f"Malformed translation response: {e}")
