@@ -81,14 +81,22 @@ async def test_synthesize_api_errors(
 
     mock_client = MagicMock()
     mock_client.aio.models.generate_content = AsyncMock(
-            side_effect=APIError(code=status_code, response_json={"error": {"message": error_message}})
+        side_effect=APIError(
+            code=status_code, response_json={"error": {"message": error_message}}
+        )
     )
 
     provider = GeminiTTSProvider(
         fake_executor, sdk_client_factory=lambda **kwargs: mock_client
     )
 
-    if expected_exception in (ProviderTransientError, ProviderQuotaError, ProviderRateLimitError, ProviderAuthenticationError, ProviderError):
+    if expected_exception in (
+        ProviderTransientError,
+        ProviderQuotaError,
+        ProviderRateLimitError,
+        ProviderAuthenticationError,
+        ProviderError,
+    ):
         # The executor swallows these and raises a generic ProviderError or moves to next model
         # so we expect a generic ProviderError from the executor when it exhausts models/keys
         with pytest.raises(ProviderError):
