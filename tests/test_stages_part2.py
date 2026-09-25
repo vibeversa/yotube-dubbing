@@ -154,7 +154,7 @@ async def test_synthesize_stage_partial_failure(fake_context):
                     "end_ms": 1000,
                     "source_text": "world",
                     "translated_text": "mundo",
-                }
+                },
             ],
             f,
         )
@@ -177,10 +177,14 @@ async def test_synthesize_stage_partial_failure(fake_context):
     assert res.status == StageStatus.FAILED
     assert "Partial completion" in res.error
 
-    tts_path_1 = fake_context.artifact_store.path_for(fake_context.job_id, "tts", "seg-1")
+    tts_path_1 = fake_context.artifact_store.path_for(
+        fake_context.job_id, "tts", "seg-1"
+    )
     assert tts_path_1.exists()
 
-    tts_path_2 = fake_context.artifact_store.path_for(fake_context.job_id, "tts", "seg-2")
+    tts_path_2 = fake_context.artifact_store.path_for(
+        fake_context.job_id, "tts", "seg-2"
+    )
     assert not tts_path_2.exists()
 
     # Verify translations file has updated status
