@@ -11,6 +11,7 @@ async def mux_media(
     runner: ProcessRunner,
     allow_stream_copy: bool = True,
     audio_bitrate: str = "192k",
+    timeout_s: int | None = None,
 ) -> Path:
     """Muxes a new audio track with an existing video track.
 
@@ -46,7 +47,7 @@ async def mux_media(
         ]
     )
 
-    await runner.run(cmd, check=True)
+    await runner.run(cmd, timeout_s=timeout_s, check=True)
 
     if not output_path.exists():
         raise ArtifactError(

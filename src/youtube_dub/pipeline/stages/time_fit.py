@@ -38,6 +38,14 @@ class TimeFitStage(PipelineStageRunner):
 
             for s in segments_data:
                 seg_id = s["segment_id"]
+                if s["start_ms"] < 0:
+                    return StageResult(
+                        StageStatus.FAILED, f"Invalid start_ms < 0 for segment {seg_id}"
+                    )
+                if s["end_ms"] <= s["start_ms"]:
+                    return StageResult(
+                        StageStatus.FAILED, f"Invalid duration for segment {seg_id}"
+                    )
                 if s.get("status") != SegmentStatus.SYNTHESIZED.value:
                     context.logger.warning(
                         f"Skipping timing for incomplete segment {seg_id}"
@@ -76,7 +84,11 @@ class TimeFitStage(PipelineStageRunner):
                 timed_audio.parent.mkdir(parents=True, exist_ok=True)
 
                 await apply_timing_fit(
-                    tts_audio, timed_audio, context.process_runner, ratio
+                    tts_audio,
+                    timed_audio,
+                    context.process_runner,
+                    ratio,
+                    timeout_s=context.config.ffmpeg_timeout_s,
                 )
 
                 timing_data.append(

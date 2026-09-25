@@ -40,5 +40,6 @@ def test_config_validation():
             transcription_model="model",
             translation_model="model",
             tts_model="model",
+            separation_model="passthrough",
             api_keys=["k"],
         )

@@ -11,6 +11,8 @@ def calculate_atempo_chain(ratio: float) -> list[float]:
     """
     if ratio <= 0.0:
         raise ValueError("Ratio must be > 0")
+    if ratio > 10.0 or ratio < 0.1:
+        raise ValueError(f"Extreme stretching ratio not supported: {ratio}")
 
     chain = []
 
@@ -36,7 +38,11 @@ def calculate_atempo_chain(ratio: float) -> list[float]:
 
 
 async def apply_timing_fit(
-    input_path: Path, output_path: Path, runner: ProcessRunner, ratio: float
+    input_path: Path,
+    output_path: Path,
+    runner: ProcessRunner,
+    ratio: float,
+    timeout_s: int | None = None,
 ) -> Path:
 
     chain = calculate_atempo_chain(ratio)
@@ -61,7 +67,7 @@ async def apply_timing_fit(
         str(output_path),
     ]
 
-    await runner.run(cmd, check=True)
+    await runner.run(cmd, timeout_s=timeout_s, check=True)
 
     if not output_path.exists():
         raise ArtifactError(f"Timing fit failed. Artifact missing at {output_path}")

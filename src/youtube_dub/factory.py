@@ -4,6 +4,11 @@ from google import genai
 
 from youtube_dub.config.loader import load_config
 from youtube_dub.media.process_runner import ProcessRunner
+from youtube_dub.media.separation import (
+    DemucsVocalSeparator,
+    PassThroughVocalSeparator,
+    VocalSeparator,
+)
 from youtube_dub.pipeline.listeners import StageListenerRegistry
 from youtube_dub.pipeline.runner import PipelineRunner
 from youtube_dub.pipeline.stages.mix import MixStage
@@ -80,6 +85,12 @@ def create_studio_application() -> StudioApplication:
         RenderStage(),
     ]
 
+    # Separator
+    if config.separation_model == "demucs":
+        separator: VocalSeparator = DemucsVocalSeparator()
+    else:
+        separator = PassThroughVocalSeparator()
+
     pipeline_runner = PipelineRunner(stages, manifest_store, listener_registry)
 
     # Wrap the runner to inject providers to context
@@ -89,6 +100,7 @@ def create_studio_application() -> StudioApplication:
         context.transcription_provider = transcription_provider
         context.translation_provider = translation_provider
         context.tts_provider = tts_provider
+        context.separator = separator
         await original_run(context)
 
     pipeline_runner.run_pipeline = _injected_run  # type: ignore

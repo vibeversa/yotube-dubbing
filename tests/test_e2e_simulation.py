@@ -38,6 +38,7 @@ def e2e_setup(tmp_path):
         transcription_model="m1",
         translation_model="m2",
         tts_model="m3",
+        separation_model="passthrough",
         api_keys=["fake"],
         chunk_ms=60000,
     )

@@ -51,9 +51,12 @@ class MixStage(PipelineStageRunner):
 
             bg_path = context.artifact_store.path_for(context.job_id, "separated_bg")
             if not bg_path.exists():
-                sep = PassThroughVocalSeparator()
+                sep = context.separator or PassThroughVocalSeparator()
                 _, new_bg = await sep.separate(
-                    source_audio, bg_path.parent, context.process_runner
+                    source_audio,
+                    bg_path.parent,
+                    context.process_runner,
+                    timeout_s=context.config.ffmpeg_timeout_s,
                 )
                 bg_path = new_bg
 
@@ -85,6 +88,11 @@ class MixStage(PipelineStageRunner):
                         continue
 
                     start_ms = s["start_ms"]
+                    if start_ms < 0:
+                        return StageResult(
+                            StageStatus.FAILED,
+                            f"Invalid start_ms < 0 for segment {seg_id}",
+                        )
                     inputs.extend(["-i", str(timed_audio)])
                     filter_parts.append(
                         f"[{input_idx}:a]adelay={start_ms}|{start_ms}[a{input_idx}];"
@@ -117,11 +125,17 @@ class MixStage(PipelineStageRunner):
                     ]
                 )
 
-                await context.process_runner.run(cmd, check=True)
+                await context.process_runner.run(
+                    cmd, timeout_s=context.config.ffmpeg_timeout_s, check=True
+                )
 
                 # Mix vocals with background
                 await mix_audio(
-                    mixed_vocals_path, bg_path, mix_path, context.process_runner
+                    mixed_vocals_path,
+                    bg_path,
+                    mix_path,
+                    context.process_runner,
+                    timeout_s=context.config.ffmpeg_timeout_s,
                 )
 
             return StageResult(StageStatus.COMPLETED)
