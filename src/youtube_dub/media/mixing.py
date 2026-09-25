@@ -10,6 +10,7 @@ async def mix_audio(
     output_path: Path,
     runner: ProcessRunner,
     background_volume: float = 0.5,
+    timeout_s: int | None = None,
 ) -> Path:
     """Mixes a vocal track with a background track."""
 
@@ -34,7 +35,7 @@ async def mix_audio(
         str(output_path),
     ]
 
-    await runner.run(cmd, check=True)
+    await runner.run(cmd, timeout_s=timeout_s, check=True)
 
     if not output_path.exists():
         raise ArtifactError(f"Mixing failed. Expected artifact at {output_path}")

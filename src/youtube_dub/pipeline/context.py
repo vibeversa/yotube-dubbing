@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 
 from youtube_dub.config.loader import AppConfig
 from youtube_dub.media.process_runner import ProcessRunner
+from youtube_dub.media.separation import VocalSeparator
 from youtube_dub.pipeline.manifest import JobManifest
 from youtube_dub.providers.base import (
     TranscriptionProvider,
@@ -26,6 +27,7 @@ class PipelineContext:
     transcription_provider: TranscriptionProvider | None = None
     translation_provider: TranslationProvider | None = None
     tts_provider: TTSProvider | None = None
+    separator: VocalSeparator | None = None
 
     # Simple cancellation event
     cancel_event: asyncio.Event = field(default_factory=asyncio.Event)

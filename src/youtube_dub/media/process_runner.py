@@ -25,10 +25,16 @@ class CompletedProcess:
 class ProcessRunner:
     @staticmethod
     def _redact_cmd(cmd: list[str]) -> list[str]:
-        # Basic redaction strategy for logs.
-        # In the future, this can be expanded to redact specific API keys if they are passed as args.
-        # For now, just return a copy.
-        return list(cmd)
+        redacted = list(cmd)
+
+        # Redact common key indicators
+        for i, arg in enumerate(redacted):
+            if "key" in arg.lower() and "=" in arg:
+                parts = arg.split("=", 1)
+                redacted[i] = f"{parts[0]}=***"
+            elif arg in ("-k", "--key", "--api-key") and i + 1 < len(redacted):
+                redacted[i + 1] = "***"
+        return redacted
 
     @staticmethod
     def _terminate_process(process: asyncio.subprocess.Process) -> None:

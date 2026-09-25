@@ -12,6 +12,7 @@ class AppConfig:
     transcription_model: str
     translation_model: str
     tts_model: str
+    separation_model: str
     api_keys: list[str]
     transcription_fallbacks: list[str] = field(default_factory=list)
     translation_fallbacks: list[str] = field(default_factory=list)
@@ -65,6 +66,7 @@ def load_config() -> AppConfig:
         transcription_model=transcription_model,
         translation_model=translation_model,
         tts_model=tts_model,
+        separation_model=os.environ.get("DUB_SEPARATION_MODEL", "passthrough"),
         api_keys=api_keys,
         transcription_fallbacks=get_list("DUB_TRANSCRIPTION_FALLBACKS"),
         translation_fallbacks=get_list("DUB_TRANSLATION_FALLBACKS"),

@@ -78,4 +78,10 @@ async def test_stderr_capture(runner):
 def test_cmd_redaction(runner):
     cmd = ["ffmpeg", "-i", "input.mp4", "-y", "output.mp4"]
     redacted = runner._redact_cmd(cmd)
-    assert redacted == cmd  # currently an identity function per initial spec
+    assert redacted == cmd
+
+    cmd2 = ["python", "script.py", "--api-key", "secret123"]
+    assert runner._redact_cmd(cmd2) == ["python", "script.py", "--api-key", "***"]
+
+    cmd3 = ["tool", "key=abcde"]
+    assert runner._redact_cmd(cmd3) == ["tool", "key=***"]

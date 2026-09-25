@@ -38,6 +38,7 @@ class RenderStage(PipelineStageRunner):
                 runner=context.process_runner,
                 allow_stream_copy=True,
                 audio_bitrate=context.config.output_audio_bitrate,
+                timeout_s=context.config.ffmpeg_timeout_s,
             )
 
             return StageResult(StageStatus.COMPLETED)
