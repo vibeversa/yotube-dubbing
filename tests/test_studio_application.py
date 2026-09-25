@@ -22,6 +22,7 @@ def studio(tmp_path):
         transcription_model="m1",
         translation_model="m2",
         tts_model="m3",
+        api_keys=["k"],
     )
     manifest_store = ManifestStore(tmp_path)
     artifact_store = JobArtifactStore(manifest_store)

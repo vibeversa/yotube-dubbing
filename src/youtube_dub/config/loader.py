@@ -12,6 +12,7 @@ class AppConfig:
     transcription_model: str
     translation_model: str
     tts_model: str
+    api_keys: list[str]
     transcription_fallbacks: list[str] = field(default_factory=list)
     translation_fallbacks: list[str] = field(default_factory=list)
     tts_fallbacks: list[str] = field(default_factory=list)
@@ -47,6 +48,10 @@ def load_config() -> AppConfig:
     translation_model = os.environ.get("DUB_TRANSLATION_MODEL", "gemini-1.5-pro")
     tts_model = os.environ.get("DUB_TTS_MODEL", "google-tts")
 
+    api_keys = get_list("GEMINI_API_KEY")
+    if not api_keys:
+        api_keys = ["DUMMY_KEY"]
+
     source_language = os.environ.get("DUB_SOURCE_LANGUAGE", "en")
     target_language = os.environ.get("DUB_TARGET_LANGUAGE", "es")
 
@@ -60,6 +65,7 @@ def load_config() -> AppConfig:
         transcription_model=transcription_model,
         translation_model=translation_model,
         tts_model=tts_model,
+        api_keys=api_keys,
         transcription_fallbacks=get_list("DUB_TRANSCRIPTION_FALLBACKS"),
         translation_fallbacks=get_list("DUB_TRANSLATION_FALLBACKS"),
         tts_fallbacks=get_list("DUB_TTS_FALLBACKS"),

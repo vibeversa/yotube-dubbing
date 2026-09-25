@@ -40,4 +40,5 @@ def test_config_validation():
             transcription_model="model",
             translation_model="model",
             tts_model="model",
+            api_keys=["k"],
         )
