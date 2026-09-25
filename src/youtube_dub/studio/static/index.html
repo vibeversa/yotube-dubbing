@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>youtube-dub v3 Studio</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: auto; }
+        .job-card { border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 5px; }
+        .failed { background-color: #ffebee; }
+        .completed { background-color: #e8f5e9; }
+        .running { background-color: #e3f2fd; }
+        .btn { padding: 5px 10px; cursor: pointer; margin-right: 5px; }
+    </style>
+</head>
+<body>
+    <h1>youtube-dub Studio</h1>
+
+    <div>
+        <h3>Create New Job</h3>
+        Source Language: <input type="text" id="sourceLang" value="en">
+        Target Language: <input type="text" id="targetLang" value="es">
+        <button class="btn" onclick="createJob()">Create Job</button>
+    </div>
+
+    <hr>
+
+    <h3>Jobs</h3>
+    <div id="jobsList">Loading jobs...</div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

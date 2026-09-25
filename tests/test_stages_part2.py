@@ -32,6 +32,7 @@ def fake_context(tmp_path):
         transcription_model="m1",
         translation_model="m2",
         tts_model="m3",
+        api_keys=["k"],
     )
 
     runner = ProcessRunner()

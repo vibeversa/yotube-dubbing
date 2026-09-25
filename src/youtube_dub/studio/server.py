@@ -1,5 +1,8 @@
+import os
+
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from youtube_dub.domain.enums import JobStatus, StageStatus
@@ -9,8 +12,35 @@ from youtube_dub.studio.schemas import JobFailureDetails, JobResponse, Suggested
 
 app = FastAPI(title="youtube-dub Studio API")
 
-# Dependency injection for StudioApplication would typically happen here.
-# For simplicity, we assume app.state.studio holds the instance.
+from contextlib import asynccontextmanager
+
+from youtube_dub.factory import create_studio_application
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if not hasattr(app.state, "studio"):
+        app.state.studio = create_studio_application()
+    yield
+
+
+app.router.lifespan_context = lifespan
+
+
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+
+@app.get("/", response_class=HTMLResponse)
+async def read_index():
+    index_path = os.path.join(static_dir, "index.html")
+    if os.path.exists(index_path):
+        with open(index_path, "r") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse(
+        content="<h1>youtube-dub Studio</h1><p>Static files missing.</p>"
+    )
 
 
 def _build_job_response(manifest) -> JobResponse:
