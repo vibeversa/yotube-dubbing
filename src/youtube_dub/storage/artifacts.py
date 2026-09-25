@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +14,10 @@ class ManifestStore:
         self.job_root = job_root
 
     def _get_manifest_path(self, job_id: str) -> Path:
-        return self.job_root / str(job_id) / "manifest.json"
+        path = self.job_root / str(job_id) / "manifest.json"
+        if not path.resolve().is_relative_to(self.job_root.resolve()):
+            raise ValueError("Path traversal detected")
+        return path
 
     def _serialize_manifest(self, manifest: JobManifest) -> str:
         data = {
@@ -77,6 +81,8 @@ class ManifestStore:
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp_path = path.with_suffix(".tmp")
 
+        manifest.updated_at = datetime.now(UTC).isoformat()
+
         try:
             content = self._serialize_manifest(manifest)
             with open(tmp_path, "w") as f:
@@ -108,7 +114,10 @@ class JobArtifactStore:
         self.manifest_store = manifest_store
 
     def get_job_dir(self, job_id: str) -> Path:
-        return self.job_root / job_id
+        path = self.job_root / job_id
+        if not path.resolve().is_relative_to(self.job_root.resolve()):
+            raise ValueError("Path traversal detected")
+        return path
 
     def path_for(
         self, job_id: str, artifact_type: str, segment_id: str | None = None
@@ -116,31 +125,37 @@ class JobArtifactStore:
         job_dir = self.get_job_dir(job_id)
 
         if artifact_type == "source_media":
-            return job_dir / "source" / "input.mp4"  # Simplify extension for now
+            result = job_dir / "source" / "input.mp4"  # Simplify extension for now
         elif artifact_type == "source_audio":
-            return job_dir / "source" / "source_audio.wav"
+            result = job_dir / "source" / "source_audio.wav"
         elif artifact_type == "separated_vocals":
-            return job_dir / "source" / "vocals.wav"
+            result = job_dir / "source" / "vocals.wav"
         elif artifact_type == "separated_bg":
-            return job_dir / "source" / "background.wav"
+            result = job_dir / "source" / "background.wav"
         elif artifact_type == "words":
-            return job_dir / "transcription" / "words.json"
+            result = job_dir / "transcription" / "words.json"
         elif artifact_type == "segments":
-            return job_dir / "segmentation" / "segments.json"
+            result = job_dir / "segmentation" / "segments.json"
         elif artifact_type == "translations":
-            return job_dir / "translation" / "translations.json"
+            result = job_dir / "translation" / "translations.json"
         elif artifact_type == "tts":
             if not segment_id:
                 raise ValueError("tts artifact requires segment_id")
-            return job_dir / "tts" / f"{segment_id}.wav"
+            result = job_dir / "tts" / f"{segment_id}.wav"
         elif artifact_type == "timing":
-            return job_dir / "timing" / "timing.json"
+            result = job_dir / "timing" / "timing.json"
         elif artifact_type == "mix":
-            return job_dir / "mix" / "dubbed_audio.wav"
+            result = job_dir / "mix" / "dubbed_audio.wav"
         elif artifact_type == "render":
-            return job_dir / "render" / "final.mp4"
+            result = job_dir / "render" / "final.mp4"
+        else:
+            raise ValueError(f"Unknown artifact type: {artifact_type}")
 
-        raise ValueError(f"Unknown artifact type: {artifact_type}")
+        job_dir.mkdir(parents=True, exist_ok=True)
+        if not result.resolve().is_relative_to(job_dir.resolve()):
+            raise ValueError("Path traversal detected")
+
+        return result
 
     def exists(
         self, job_id: str, artifact_type: str, segment_id: str | None = None

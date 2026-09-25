@@ -45,3 +45,57 @@ def test_manifest_store_corrupt(tmp_path: Path):
 
     with pytest.raises(ManifestError, match="Manifest JSON corrupt"):
         store.load(str(job_id))
+
+
+import time
+
+from youtube_dub.storage.artifacts import JobArtifactStore
+
+
+def test_path_traversal_manifest(tmp_path: Path):
+    store = ManifestStore(tmp_path)
+    with pytest.raises(ValueError, match="Path traversal detected"):
+        store._get_manifest_path("../outside")
+
+
+def test_path_traversal_artifacts(tmp_path: Path):
+    store = JobArtifactStore(ManifestStore(tmp_path))
+    with pytest.raises(ValueError, match="Path traversal detected"):
+        store.path_for("../outside", "source_media")
+
+
+def test_path_traversal_segment_id(tmp_path: Path):
+    store = JobArtifactStore(ManifestStore(tmp_path))
+    store.job_root.mkdir(parents=True, exist_ok=True)
+    with pytest.raises(ValueError, match="Path traversal detected"):
+        store.path_for("job_1", "tts", "../../../outside")
+
+
+def test_manifest_updated_at_mutation(tmp_path: Path):
+    store = ManifestStore(tmp_path)
+    job_id = uuid.uuid4()
+    manifest = JobManifest(schema_version=1, pipeline_version="3.0", job_id=job_id)
+
+    store.save(manifest)
+    loaded_1 = store.load(str(job_id))
+
+    time.sleep(0.01)
+
+    store.save(manifest)
+    loaded_2 = store.load(str(job_id))
+
+    assert loaded_1.updated_at != loaded_2.updated_at
+    assert loaded_2.updated_at > loaded_1.updated_at
+
+
+def test_manifest_invalid_uuid(tmp_path: Path):
+    store = ManifestStore(tmp_path)
+    job_id = uuid.uuid4()
+    manifest_path = store._get_manifest_path(str(job_id))
+    manifest_path.parent.mkdir(parents=True)
+    manifest_path.write_text(
+        '{"schema_version": 1, "pipeline_version": "3.0", "job_id": "invalid"}'
+    )
+
+    with pytest.raises(ManifestError, match="Corrupt manifest"):
+        store.load(str(job_id))

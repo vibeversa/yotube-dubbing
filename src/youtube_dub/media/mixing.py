@@ -16,6 +16,8 @@ async def mix_audio(
     # We use amix filter to combine them.
     # amix by default scales volume by 1/N. We use volume filter on background.
 
+    tmp_path = output_path.with_suffix(".tmp")
+
     cmd = [
         "ffmpeg",
         "-y",
@@ -31,10 +33,13 @@ async def mix_audio(
         "2",
         "-ar",
         "44100",
-        str(output_path),
+        str(tmp_path),
     ]
 
     await runner.run(cmd, check=True)
+
+    if tmp_path.exists():
+        tmp_path.replace(output_path)
 
     if not output_path.exists():
         raise ArtifactError(f"Mixing failed. Expected artifact at {output_path}")
