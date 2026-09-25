@@ -107,7 +107,7 @@ async def test_segment_stage_success(fake_context, tmp_path):
     words = [
         {"word": "a", "start_ms": 0, "end_ms": 1000},
         {"word": "b", "start_ms": 1000, "end_ms": 61000},  # Triggers chunk boundary
-        {"word": "c", "start_ms": 61000, "end_ms": 62000},
+        {"word": "c", "start_ms": 61500, "end_ms": 62000},  # Gap > 200ms
     ]
     with open(words_path, "w") as f:
         json.dump(words, f)

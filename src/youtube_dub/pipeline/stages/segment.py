@@ -33,8 +33,6 @@ class SegmentStage(PipelineStageRunner):
                 context.logger.warning("No words to segment")
                 segments: list[DubbingSegment] = []
             else:
-                # Simplistic dummy segmentation for now based on chunk_ms
-                # In real life, we would break on punctuation or silence gaps.
                 segments = []
                 current_words = []
                 current_start = words_data[0]["start_ms"]
@@ -42,10 +40,19 @@ class SegmentStage(PipelineStageRunner):
                 chunk_ms = context.config.chunk_ms
                 seg_idx = 1
 
-                for w in words_data:
+                # Minimum duration constraint so we don't end up with 10ms micro-segments
+                MIN_GAP_MS = 200
+
+                for i, w in enumerate(words_data):
                     current_words.append(w["word"])
 
-                    if w["end_ms"] - current_start >= chunk_ms:
+                    next_word = words_data[i + 1] if i + 1 < len(words_data) else None
+                    gap = next_word["start_ms"] - w["end_ms"] if next_word else 0
+
+                    duration = w["end_ms"] - current_start
+
+                    # Split if we exceed chunk size AND there's a reasonable gap to pause on
+                    if duration >= chunk_ms and gap >= MIN_GAP_MS:
                         segments.append(
                             DubbingSegment(
                                 segment_id=f"seg-{seg_idx:06d}",
@@ -55,13 +62,11 @@ class SegmentStage(PipelineStageRunner):
                             )
                         )
                         current_words = []
-                        current_start = w[
-                            "end_ms"
-                        ]  # Next chunk starts where this ended
+                        if next_word:
+                            current_start = next_word["start_ms"]
                         seg_idx += 1
 
                 if current_words:
-                    # push remainder
                     segments.append(
                         DubbingSegment(
                             segment_id=f"seg-{seg_idx:06d}",

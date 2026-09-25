@@ -39,7 +39,7 @@ class TranscribeStage(PipelineStageRunner):
 
             # Call provider
             timestamps = await context.transcription_provider.transcribe(
-                source_audio_path, language=context.config.source_language
+                source_audio_path, language=context.manifest.source_language
             )
 
             # Write artifact atomically

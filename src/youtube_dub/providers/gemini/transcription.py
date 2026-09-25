@@ -2,8 +2,9 @@ import json
 from pathlib import Path
 
 from google import genai
+from google.genai import types
 
-from youtube_dub.domain.errors import ProviderInvalidRequestError
+from youtube_dub.domain.errors import ProviderError, ProviderInvalidRequestError
 from youtube_dub.domain.models import WordTimestamp
 from youtube_dub.providers.base import TranscriptionProvider
 from youtube_dub.providers.gemini.executor import GeminiCallExecutor
@@ -27,25 +28,39 @@ class GeminiTranscriptionProvider(TranscriptionProvider):
         async def _call_gemini(model_name: str, api_key: str) -> list[WordTimestamp]:
             client = self.sdk_client_factory(api_key=api_key)
 
-            # Simulated call for now until we fully integrate the real API wrapper,
-            # this represents mapping the provider's domain request to the SDK request.
-            # In real implementation we'd upload the file and prompt it for timestamps.
+            # Upload the file
+            try:
+                uploaded_file = client.files.upload(file=str(audio_path))
 
-            # Using a stub response mapping
-            # We would call client.models.generate_content(...) here
-            response_text = await self._mock_api_call(
-                client, model_name, audio_path, language
-            )
-            return self._parse_response(response_text)
+                prompt = (
+                    "Transcribe the following audio file. Return a JSON array "
+                    "of objects, where each object has 'word', 'start_ms', and 'end_ms'."
+                )
+                if language:
+                    prompt += f" The language is {language}."
+
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=[uploaded_file, prompt],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                    ),
+                )
+
+                return self._parse_response(response.text)
+
+            finally:
+                # Cleanup the file from Gemini if it was successfully uploaded
+                try:
+                    client.files.delete(name=uploaded_file.name)
+                except Exception as e:
+                    import logging
+
+                    logging.getLogger(__name__).warning(
+                        f"Failed to cleanup file {uploaded_file.name}: {e}"
+                    )
 
         return await self.executor.execute(_call_gemini)
-
-    async def _mock_api_call(
-        self, client: genai.Client, model: str, path: Path, lang: str | None
-    ) -> str:
-        # A real implementation would upload and prompt.
-        # This is overridden in tests.
-        return '[{"word": "hello", "start_ms": 0, "end_ms": 500}]'
 
     def _parse_response(self, text: str) -> list[WordTimestamp]:
         try:
@@ -59,9 +74,4 @@ class GeminiTranscriptionProvider(TranscriptionProvider):
                 for item in data
             ]
         except (json.JSONDecodeError, KeyError, ValueError) as e:
-            # We map malformed response to an invalid request or specific provider error
-            # For simplicity, treating it as a generic exception that the executor will catch
-            # and bubble up or we can raise a ProviderError explicitly.
-            from youtube_dub.domain.errors import ProviderError
-
             raise ProviderError(f"Malformed transcription response: {e}")

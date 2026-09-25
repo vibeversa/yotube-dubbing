@@ -52,7 +52,7 @@ class TranslateStage(PipelineStageRunner):
 
             try:
                 translated_segments = await context.translation_provider.translate(
-                    segments, target_language=context.config.target_language
+                    segments, target_language=context.manifest.target_language
                 )
             except ProviderError as e:
                 return StageResult(StageStatus.FAILED, str(e))

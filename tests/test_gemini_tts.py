@@ -1,3 +1,5 @@
+import base64
+import json
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,12 +23,16 @@ def fake_executor():
 
 @pytest.mark.asyncio
 async def test_synthesize_success(fake_executor):
-    provider = GeminiTTSProvider(fake_executor, sdk_client_factory=MagicMock())
+    mock_client = MagicMock()
+    mock_response = MagicMock()
+    mock_response.text = json.dumps(
+        {"audio_base64": base64.b64encode(b"audio").decode()}
+    )
+    mock_client.models.generate_content.return_value = mock_response
 
-    async def mock_call(client, model, text, voice):
-        return b"audio"
-
-    provider._mock_api_call = mock_call
+    provider = GeminiTTSProvider(
+        fake_executor, sdk_client_factory=lambda **kwargs: mock_client
+    )
 
     result = await provider.synthesize("hello", voice=VoiceProfile("voice1"))
     assert result == b"audio"

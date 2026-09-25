@@ -11,7 +11,33 @@ class AlignStage(PipelineStageRunner):
     async def run(self, context: PipelineContext) -> StageResult:
         context.logger.info("Running ALIGNED stage")
 
-        # In a real implementation this would map synthesized audio back to words.
-        # For v1, this is a placeholder keeping the canonical pipeline structural order intact.
+        # Validates that TTS artifacts exist for all SYNTHESIZED segments
+        try:
+            translations_path = context.artifact_store.path_for(
+                context.job_id, "translations"
+            )
+            if not translations_path.exists():
+                return StageResult(
+                    StageStatus.FAILED, "Translations artifact not found"
+                )
 
-        return StageResult(StageStatus.COMPLETED)
+            import json
+
+            with open(translations_path, "r") as f:
+                segments_data = json.load(f)
+
+            for s in segments_data:
+                if s.get("status") == "SYNTHESIZED":
+                    tts_path = context.artifact_store.path_for(
+                        context.job_id, "tts", s["segment_id"]
+                    )
+                    if not tts_path.exists():
+                        return StageResult(
+                            StageStatus.FAILED,
+                            f"Missing TTS artifact for {s['segment_id']}",
+                        )
+
+            # We don't have a complex alignment metadata algorithm yet, but this fulfills the stage boundary
+            return StageResult(StageStatus.COMPLETED)
+        except Exception as e:
+            return StageResult(StageStatus.FAILED, str(e))
