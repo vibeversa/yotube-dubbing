@@ -57,6 +57,7 @@ def client(mock_studio):
 
 @pytest.mark.asyncio
 async def test_create_job(client, mock_studio):
+    # Test basic create
     response = await client.post(
         "/api/jobs", json={"source_language": "en", "target_language": "es"}
     )
@@ -65,6 +66,30 @@ async def test_create_job(client, mock_studio):
     assert "manifest" in data
     assert "job_id" in data["manifest"]
     assert data["manifest"]["status"] == "CREATED"
+
+    # Test create with URL
+    response_url = await client.post(
+        "/api/jobs",
+        json={
+            "source_language": "en",
+            "target_language": "es",
+            "source_url": "https://youtube.com/123",
+        },
+    )
+    assert response_url.status_code == 200
+    mock_studio.download_youtube_media.assert_called_once()
+
+    # Test create with local path
+    response_path = await client.post(
+        "/api/jobs",
+        json={
+            "source_language": "en",
+            "target_language": "es",
+            "local_path": "/tmp/file.mp4",
+        },
+    )
+    assert response_path.status_code == 200
+    mock_studio.ingest_media.assert_called_once()
 
 
 @pytest.mark.asyncio

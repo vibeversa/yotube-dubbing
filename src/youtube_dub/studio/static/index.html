@@ -18,9 +18,13 @@
 
     <div>
         <h3>Create New Job</h3>
-        Source Language: <input type="text" id="sourceLang" value="en">
-        Target Language: <input type="text" id="targetLang" value="es">
-        <button class="btn" onclick="createJob()">Create Job</button>
+        <label>Source Language: <input type="text" id="sourceLang" value="en"></label>
+        <label>Target Language: <input type="text" id="targetLang" value="es"></label><br><br>
+        <label>YouTube URL: <input type="text" id="sourceUrl" placeholder="https://www.youtube.com/..."></label>
+        <label>Local Path: <input type="text" id="localPath" placeholder="/path/to/local/file.mp4"></label><br><br>
+        <button class="btn" id="createBtn" onclick="createJob()">Create Job</button>
+        <span id="createStatus" style="margin-left: 10px;"></span>
+        <div id="createError" style="color: red; margin-top: 5px;"></div>
     </div>
 
     <hr>
