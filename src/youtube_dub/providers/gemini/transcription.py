@@ -3,8 +3,16 @@ from pathlib import Path
 
 from google import genai
 from google.genai import types
+from google.genai.errors import APIError
 
-from youtube_dub.domain.errors import ProviderError, ProviderInvalidRequestError
+from youtube_dub.domain.errors import (
+    ProviderAuthenticationError,
+    ProviderError,
+    ProviderInvalidRequestError,
+    ProviderQuotaError,
+    ProviderRateLimitError,
+    ProviderTransientError,
+)
 from youtube_dub.domain.models import WordTimestamp
 from youtube_dub.providers.base import TranscriptionProvider
 from youtube_dub.providers.gemini.executor import GeminiCallExecutor
@@ -30,7 +38,7 @@ class GeminiTranscriptionProvider(TranscriptionProvider):
 
             # Upload the file
             try:
-                uploaded_file = client.files.upload(file=str(audio_path))
+                uploaded_file = await client.aio.files.upload(file=str(audio_path))
 
                 prompt = (
                     "Transcribe the following audio file. Return a JSON array "
@@ -39,7 +47,7 @@ class GeminiTranscriptionProvider(TranscriptionProvider):
                 if language:
                     prompt += f" The language is {language}."
 
-                response = client.models.generate_content(
+                response = await client.aio.models.generate_content(
                     model=model_name,
                     contents=[uploaded_file, prompt],
                     config=types.GenerateContentConfig(
@@ -49,16 +57,29 @@ class GeminiTranscriptionProvider(TranscriptionProvider):
 
                 return self._parse_response(response.text)
 
+            except APIError as e:
+                # Map SDK errors to domain errors
+                if e.code == 429:
+                    if "quota" in str(e).lower():
+                        raise ProviderQuotaError(str(e))
+                    raise ProviderRateLimitError(str(e))
+                elif e.code in [401, 403]:
+                    raise ProviderAuthenticationError(str(e))
+                elif e.code in [500, 502, 503, 504]:
+                    raise ProviderTransientError(str(e))
+                elif e.code == 400:
+                    raise ProviderInvalidRequestError(str(e))
+                else:
+                    raise ProviderError(str(e))
             finally:
                 # Cleanup the file from Gemini if it was successfully uploaded
                 try:
-                    client.files.delete(name=uploaded_file.name)
+                    if "uploaded_file" in locals() and hasattr(uploaded_file, "name"):
+                        await client.aio.files.delete(name=uploaded_file.name)
                 except Exception as e:
                     import logging
 
-                    logging.getLogger(__name__).warning(
-                        f"Failed to cleanup file {uploaded_file.name}: {e}"
-                    )
+                    logging.getLogger(__name__).warning(f"Failed to cleanup file: {e}")
 
         return await self.executor.execute(_call_gemini)
 

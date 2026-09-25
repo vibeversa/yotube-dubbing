@@ -22,6 +22,8 @@ def fake_executor():
 
 @pytest.mark.asyncio
 async def test_translate_success_preserves_timeline(fake_executor):
+    from unittest.mock import AsyncMock
+
     mock_client = MagicMock()
     mock_response = MagicMock()
     mock_response.text = json.dumps(
@@ -30,7 +32,7 @@ async def test_translate_success_preserves_timeline(fake_executor):
             {"segment_id": "seg-2", "translated_text": "mundo"},
         ]
     )
-    mock_client.models.generate_content.return_value = mock_response
+    mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
     provider = GeminiTranslationProvider(
         fake_executor, sdk_client_factory=lambda **kwargs: mock_client
@@ -55,12 +57,14 @@ async def test_translate_success_preserves_timeline(fake_executor):
 
 @pytest.mark.asyncio
 async def test_translate_missing_segment_response(fake_executor):
+    from unittest.mock import AsyncMock
+
     mock_client = MagicMock()
     mock_response = MagicMock()
     mock_response.text = json.dumps(
         [{"segment_id": "seg-wrong", "translated_text": "hola"}]
     )
-    mock_client.models.generate_content.return_value = mock_response
+    mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
 
     provider = GeminiTranslationProvider(
         fake_executor, sdk_client_factory=lambda **kwargs: mock_client
