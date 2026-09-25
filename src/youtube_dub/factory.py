@@ -93,19 +93,11 @@ def create_studio_application() -> StudioApplication:
 
     pipeline_runner = PipelineRunner(stages, manifest_store, listener_registry)
 
-    # Wrap the runner to inject providers to context
-    original_run = pipeline_runner.run_pipeline
-
-    async def _injected_run(context):
-        context.transcription_provider = transcription_provider
-        context.translation_provider = translation_provider
-        context.tts_provider = tts_provider
-        context.separator = separator
-        await original_run(context)
-
-    pipeline_runner.run_pipeline = _injected_run  # type: ignore
-
     return StudioApplication(
+        transcription_provider=transcription_provider,
+        translation_provider=translation_provider,
+        tts_provider=tts_provider,
+        separator=separator,
         config=config,
         manifest_store=manifest_store,
         artifact_store=artifact_store,

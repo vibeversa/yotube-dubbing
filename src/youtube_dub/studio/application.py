@@ -7,10 +7,16 @@ from youtube_dub.config.loader import AppConfig
 from youtube_dub.domain.enums import JobStatus
 from youtube_dub.domain.errors import JobError
 from youtube_dub.media.process_runner import ProcessRunner
+from youtube_dub.media.separation import VocalSeparator
 from youtube_dub.pipeline.context import PipelineContext
 from youtube_dub.pipeline.listeners import StageListenerRegistry
 from youtube_dub.pipeline.manifest import JobManifest
 from youtube_dub.pipeline.runner import PipelineRunner
+from youtube_dub.providers.base import (
+    TranscriptionProvider,
+    TranslationProvider,
+    TTSProvider,
+)
 from youtube_dub.storage.artifacts import JobArtifactStore, ManifestStore
 
 
@@ -23,6 +29,10 @@ class StudioApplication:
         pipeline_runner: PipelineRunner,
         process_runner: ProcessRunner,
         listener_registry: StageListenerRegistry,
+        transcription_provider: TranscriptionProvider,
+        translation_provider: TranslationProvider,
+        tts_provider: TTSProvider,
+        separator: VocalSeparator,
     ):
         self.config = config
         self.manifest_store = manifest_store
@@ -30,6 +40,10 @@ class StudioApplication:
         self.pipeline_runner = pipeline_runner
         self.process_runner = process_runner
         self.listener_registry = listener_registry
+        self.transcription_provider = transcription_provider
+        self.translation_provider = translation_provider
+        self.tts_provider = tts_provider
+        self.separator = separator
 
         self.logger = logging.getLogger("studio_application")
 
@@ -82,8 +96,10 @@ class StudioApplication:
             artifact_store=self.artifact_store,
             process_runner=self.process_runner,
             logger=logging.getLogger(f"job_{job_id}"),
-            # Note: In a fully wired application, we'd inject concrete providers here.
-            # For simplicity in this structure, we assume they are wired appropriately.
+            transcription_provider=self.transcription_provider,
+            translation_provider=self.translation_provider,
+            tts_provider=self.tts_provider,
+            separator=self.separator,
         )
 
         self._active_contexts[job_id] = context
