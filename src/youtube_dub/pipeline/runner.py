@@ -22,10 +22,7 @@ class PipelineRunner:
     async def run_pipeline(self, context: PipelineContext) -> None:
         manifest = context.manifest
 
-        if manifest.status in [
-            JobStatus.COMPLETED,
-            JobStatus.CANCELLED,
-        ]:
+        if manifest.status == JobStatus.COMPLETED:
             return
 
         manifest.status = JobStatus.RUNNING

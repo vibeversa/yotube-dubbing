@@ -10,7 +10,6 @@ def test_stage_order():
         PipelineStage.SEGMENTED,
         PipelineStage.TRANSLATED,
         PipelineStage.TTS_PARTIAL,
-        PipelineStage.ALIGNED,
         PipelineStage.TIMED,
         PipelineStage.MIXED,
         PipelineStage.RENDERED,

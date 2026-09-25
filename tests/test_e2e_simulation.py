@@ -18,7 +18,6 @@ from youtube_dub.pipeline.context import PipelineContext
 from youtube_dub.pipeline.listeners import StageListenerRegistry
 from youtube_dub.pipeline.manifest import JobManifest
 from youtube_dub.pipeline.runner import PipelineRunner
-from youtube_dub.pipeline.stages.align import AlignStage
 from youtube_dub.pipeline.stages.mix import MixStage
 from youtube_dub.pipeline.stages.render import RenderStage
 from youtube_dub.pipeline.stages.segment import SegmentStage
@@ -114,7 +113,6 @@ def e2e_setup(tmp_path):
         SegmentStage(),
         TranslateStage(),
         SynthesizeStage(),
-        AlignStage(),
         TimeFitStage(),
         MixStage(),
         RenderStage(),

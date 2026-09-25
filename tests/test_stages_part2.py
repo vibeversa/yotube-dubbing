@@ -132,6 +132,65 @@ async def test_synthesize_stage(fake_context):
 
 
 @pytest.mark.asyncio
+async def test_synthesize_stage_partial_failure(fake_context):
+    translations_path = fake_context.artifact_store.path_for(
+        fake_context.job_id, "translations"
+    )
+    translations_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(translations_path, "w") as f:
+        json.dump(
+            [
+                {
+                    "segment_id": "seg-1",
+                    "start_ms": 100,
+                    "end_ms": 500,
+                    "source_text": "hello",
+                    "translated_text": "hola",
+                },
+                {
+                    "segment_id": "seg-2",
+                    "start_ms": 600,
+                    "end_ms": 1000,
+                    "source_text": "world",
+                    "translated_text": "mundo",
+                }
+            ],
+            f,
+        )
+
+    provider = MagicMock()
+
+    # Make the second segment fail synthesis
+    async def mock_synthesize(text, voice):
+        if text == "mundo":
+            raise ValueError("Provider error")
+        return b"audio"
+
+    provider.synthesize.side_effect = mock_synthesize
+    fake_context.tts_provider = provider
+
+    stage = SynthesizeStage()
+    res = await stage.run(fake_context)
+
+    # Should return FAILED because of partial completion
+    assert res.status == StageStatus.FAILED
+    assert "Partial completion" in res.error
+
+    tts_path_1 = fake_context.artifact_store.path_for(fake_context.job_id, "tts", "seg-1")
+    assert tts_path_1.exists()
+
+    tts_path_2 = fake_context.artifact_store.path_for(fake_context.job_id, "tts", "seg-2")
+    assert not tts_path_2.exists()
+
+    # Verify translations file has updated status
+    with open(translations_path) as f:
+        data = json.load(f)
+    assert data[0]["status"] == "SYNTHESIZED"
+    assert data[1]["status"] == "FAILED"
+
+
+@pytest.mark.asyncio
 async def test_time_fit_stage(fake_context):
     translations_path = fake_context.artifact_store.path_for(
         fake_context.job_id, "translations"

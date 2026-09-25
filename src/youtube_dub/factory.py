@@ -6,7 +6,6 @@ from youtube_dub.config.loader import load_config
 from youtube_dub.media.process_runner import ProcessRunner
 from youtube_dub.pipeline.listeners import StageListenerRegistry
 from youtube_dub.pipeline.runner import PipelineRunner
-from youtube_dub.pipeline.stages.align import AlignStage
 from youtube_dub.pipeline.stages.mix import MixStage
 from youtube_dub.pipeline.stages.render import RenderStage
 from youtube_dub.pipeline.stages.segment import SegmentStage
@@ -76,7 +75,6 @@ def create_studio_application() -> StudioApplication:
         SegmentStage(),
         TranslateStage(),
         SynthesizeStage(),
-        AlignStage(),
         TimeFitStage(),
         MixStage(),
         RenderStage(),

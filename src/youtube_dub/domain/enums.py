@@ -7,7 +7,6 @@ class PipelineStage(str, enum.Enum):
     SEGMENTED = "SEGMENTED"
     TRANSLATED = "TRANSLATED"
     TTS_PARTIAL = "TTS_PARTIAL"
-    ALIGNED = "ALIGNED"
     TIMED = "TIMED"
     MIXED = "MIXED"
     RENDERED = "RENDERED"
