@@ -7,10 +7,14 @@ from youtube_dub.config.loader import AppConfig
 from youtube_dub.domain.enums import JobStatus
 from youtube_dub.domain.errors import JobError
 from youtube_dub.media.process_runner import ProcessRunner
-from youtube_dub.providers.base import TranscriptionProvider, TranslationProvider, TTSProvider
 from youtube_dub.media.separation import VocalSeparator
 from youtube_dub.pipeline.listeners import StageListenerRegistry
 from youtube_dub.pipeline.runner import PipelineRunner
+from youtube_dub.providers.base import (
+    TranscriptionProvider,
+    TranslationProvider,
+    TTSProvider,
+)
 from youtube_dub.storage.artifacts import JobArtifactStore, ManifestStore
 from youtube_dub.studio.application import StudioApplication
 
