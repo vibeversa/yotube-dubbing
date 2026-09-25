@@ -5,7 +5,7 @@ import uuid
 from pathlib import Path
 
 from youtube_dub.config.loader import AppConfig
-from youtube_dub.domain.enums import JobStatus
+from youtube_dub.domain.enums import JobStatus, StageStatus
 from youtube_dub.domain.errors import JobError
 from youtube_dub.media.process_runner import ProcessRunner
 from youtube_dub.media.separation import VocalSeparator
@@ -196,7 +196,7 @@ class StudioApplication:
 
         errors = []
         for stage_name, record in manifest.stages.items():
-            if record.status == "failed":
+            if record.status == StageStatus.FAILED:
                 errors.append(f"Stage {stage_name} failed: {record.error}")
 
         if errors:

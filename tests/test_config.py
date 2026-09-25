@@ -43,3 +43,63 @@ def test_config_validation():
             separation_model="passthrough",
             api_keys=["k"],
         )
+
+
+def test_config_validation_max_concurrent_tts_calls():
+    with pytest.raises(
+        ConfigurationError, match="max_concurrent_tts_calls must be > 0"
+    ):
+        AppConfig(
+            source_language="en",
+            target_language="es",
+            job_root="data/jobs",
+            transcription_model="model",
+            translation_model="model",
+            tts_model="model",
+            separation_model="passthrough",
+            api_keys=["k"],
+            max_concurrent_tts_calls=0,
+        )
+
+
+def test_config_validation_ffmpeg_timeout_s():
+    with pytest.raises(ConfigurationError, match="ffmpeg_timeout_s must be > 0"):
+        AppConfig(
+            source_language="en",
+            target_language="es",
+            job_root="data/jobs",
+            transcription_model="model",
+            translation_model="model",
+            tts_model="model",
+            separation_model="passthrough",
+            api_keys=["k"],
+            ffmpeg_timeout_s=0,
+        )
+
+
+def test_config_validation_transcription_model():
+    with pytest.raises(ConfigurationError, match="transcription_model must be set"):
+        AppConfig(
+            source_language="en",
+            target_language="es",
+            job_root="data/jobs",
+            transcription_model="",
+            translation_model="model",
+            tts_model="model",
+            separation_model="passthrough",
+            api_keys=["k"],
+        )
+
+
+def test_config_validation_job_root():
+    with pytest.raises(ConfigurationError, match="job_root must be set"):
+        AppConfig(
+            source_language="en",
+            target_language="es",
+            job_root="",
+            transcription_model="model",
+            translation_model="model",
+            tts_model="model",
+            separation_model="passthrough",
+            api_keys=["k"],
+        )

@@ -99,3 +99,42 @@ def test_manifest_invalid_uuid(tmp_path: Path):
 
     with pytest.raises(ManifestError, match="Corrupt manifest"):
         store.load(str(job_id))
+
+
+from unittest.mock import patch
+
+
+def test_job_dir_path_traversal(tmp_path: Path):
+    store = JobArtifactStore(ManifestStore(tmp_path))
+    with pytest.raises(ValueError, match="Path traversal detected"):
+        store.get_job_dir("../outside")
+
+
+def test_path_for_invalid_artifact(tmp_path: Path):
+    store = JobArtifactStore(ManifestStore(tmp_path))
+    with pytest.raises(ValueError, match="Unknown artifact type: invalid"):
+        store.path_for("job_1", "invalid")
+
+
+def test_path_for_tts_missing_segment(tmp_path: Path):
+    store = JobArtifactStore(ManifestStore(tmp_path))
+    with pytest.raises(ValueError, match="tts artifact requires segment_id"):
+        store.path_for("job_1", "tts")
+
+
+def test_manifest_store_save_oserror(tmp_path: Path):
+    store = ManifestStore(tmp_path)
+    job_id = uuid.uuid4()
+    manifest = JobManifest(schema_version=1, pipeline_version="3.0", job_id=job_id)
+
+    with (
+        patch("os.fsync", side_effect=OSError("Disk full")),
+        pytest.raises(ManifestError, match="Failed to save manifest: Disk full"),
+    ):
+        store.save(manifest)
+
+
+def test_path_for_separated_vocals(tmp_path: Path):
+    store = JobArtifactStore(ManifestStore(tmp_path))
+    path = store.path_for("job_1", "separated_vocals")
+    assert path.name == "vocals.wav"

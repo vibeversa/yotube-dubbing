@@ -135,3 +135,52 @@ async def test_synthesize_malformed_response(fake_executor):
 
     with pytest.raises(ProviderError, match="No audio returned in response candidates"):
         await provider.synthesize("test", voice=VoiceProfile("voice1"))
+
+
+@pytest.mark.asyncio
+async def test_tts_missing_voice(fake_executor):
+    provider = GeminiTTSProvider(fake_executor, sdk_client_factory=MagicMock())
+    with pytest.raises(ProviderInvalidRequestError, match="Voice profile is required"):
+        await provider.synthesize("test", voice=None)
+
+
+@pytest.mark.asyncio
+async def test_tts_json_decode_error(fake_executor):
+    from unittest.mock import AsyncMock
+
+    mock_client = MagicMock()
+    mock_client.aio.models.generate_content = AsyncMock(
+        side_effect=ValueError("json bad")
+    )
+
+    provider = GeminiTTSProvider(
+        fake_executor, sdk_client_factory=lambda **kwargs: mock_client
+    )
+
+    with pytest.raises(ProviderError):
+        await provider.synthesize("test", voice=VoiceProfile("voice1"))
+
+
+@pytest.mark.asyncio
+async def test_tts_no_inline_audio_data(fake_executor):
+    from unittest.mock import AsyncMock
+
+    mock_client = MagicMock()
+    mock_response = MagicMock()
+
+    mock_part = MagicMock()
+    mock_part.inline_data = None
+    mock_content = MagicMock()
+    mock_content.parts = [mock_part]
+    mock_candidate = MagicMock()
+    mock_candidate.content = mock_content
+    mock_response.candidates = [mock_candidate]
+
+    mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
+
+    provider = GeminiTTSProvider(
+        fake_executor, sdk_client_factory=lambda **kwargs: mock_client
+    )
+
+    with pytest.raises(ProviderError, match="No inline audio data found in response"):
+        await provider.synthesize("test", voice=VoiceProfile("voice1"))
