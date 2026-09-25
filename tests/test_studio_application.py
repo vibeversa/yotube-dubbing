@@ -7,8 +7,14 @@ from youtube_dub.config.loader import AppConfig
 from youtube_dub.domain.enums import JobStatus
 from youtube_dub.domain.errors import JobError
 from youtube_dub.media.process_runner import ProcessRunner
+from youtube_dub.media.separation import VocalSeparator
 from youtube_dub.pipeline.listeners import StageListenerRegistry
 from youtube_dub.pipeline.runner import PipelineRunner
+from youtube_dub.providers.base import (
+    TranscriptionProvider,
+    TranslationProvider,
+    TTSProvider,
+)
 from youtube_dub.storage.artifacts import JobArtifactStore, ManifestStore
 from youtube_dub.studio.application import StudioApplication
 
@@ -30,6 +36,10 @@ def studio(tmp_path):
     pipeline_runner = MagicMock(spec=PipelineRunner)
     process_runner = ProcessRunner()
     listener_registry = StageListenerRegistry()
+    transcription_provider = MagicMock(spec=TranscriptionProvider)
+    translation_provider = MagicMock(spec=TranslationProvider)
+    tts_provider = MagicMock(spec=TTSProvider)
+    separator = MagicMock(spec=VocalSeparator)
 
     return StudioApplication(
         config,
@@ -38,6 +48,10 @@ def studio(tmp_path):
         pipeline_runner,
         process_runner,
         listener_registry,
+        transcription_provider,
+        translation_provider,
+        tts_provider,
+        separator,
     )
 
 
