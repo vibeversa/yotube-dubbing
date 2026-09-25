@@ -1,6 +1,6 @@
 # Youtube Dubbing
 
-Welcome to the `youtube-dub v3` project! This is a deterministic, resumable, pipeline-driven video dubbing architecture.
+Welcome to the `Youtube Dubbing` project! This is a deterministic, resumable, pipeline-driven video dubbing architecture.
 
 ## Supported Python version
 Python 3.12+
