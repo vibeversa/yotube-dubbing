@@ -114,7 +114,7 @@ class SynthesizeStage(PipelineStageRunner):
             if failed_count > 0:
                 context.logger.warning(f"{failed_count} segments failed TTS synthesis")
                 return StageResult(
-                    StageStatus.COMPLETED,
+                    StageStatus.FAILED,
                     f"Partial completion: {failed_count} segments failed",
                 )
 
