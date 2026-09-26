@@ -82,13 +82,14 @@ class ProcessRunner:
 
         logger.info(f"process_started: {cmd_str} (job_id: {job_id})")
 
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            # Create a new process group for POSIX to help with tree termination if needed
-            preexec_fn=os.setsid if sys.platform != "win32" else None,
-        )
+        kwargs: dict = {
+            "stdout": asyncio.subprocess.PIPE,
+            "stderr": asyncio.subprocess.PIPE,
+        }
+        if sys.platform != "win32":
+            kwargs["preexec_fn"] = getattr(os, "setsid", None)
+
+        process = await asyncio.create_subprocess_exec(*cmd, **kwargs)
 
         stdout_data = b""
         stderr_data = b""

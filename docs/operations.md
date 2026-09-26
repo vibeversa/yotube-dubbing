@@ -6,6 +6,14 @@
 Ensure that the machine running `youtube-dub` has `ffmpeg` and `ffprobe` installed and accessible from the system `PATH`.
 Set the required environment variable `GEMINI_API_KEY`. You can supply multiple comma-separated keys to enable rotation.
 
+### Advanced Configuration
+
+The application exposes several advanced configuration options via environment variables:
+
+- `DUB_MAX_DURATION_S`: The maximum permitted media duration in seconds (default: 3600).
+- `DUB_CHUNK_MS`: The chunk size in milliseconds used during segmentation (default: 60000).
+- `DUB_OUTPUT_AUDIO_BITRATE`: The audio bitrate used during the final ffmpeg mixing step (default: "192k").
+
 ### Dependency Installation
 Use `uv` for reproducible environment installation:
 ```bash
@@ -13,7 +21,7 @@ uv sync
 ```
 
 ### Optional Demucs Setup
-*(Future Feature)* Installing the optional `demucs` extra allows for native AI vocal separation:
+Installing the optional `demucs` extra allows for native AI vocal separation:
 ```bash
 uv add "youtube-dub[demucs]"
 ```
