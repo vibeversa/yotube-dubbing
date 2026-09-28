@@ -73,9 +73,7 @@ class SynthesizeStage(PipelineStageRunner):
                                 "TTS provider is None in synthesize segment logic"
                             )
 
-                        voice = VoiceProfile(
-                            "default"
-                        )  # Placeholder for actual voice profile selection
+                        voice = VoiceProfile(context.manifest.target_language)
 
                         audio_bytes = await context.tts_provider.synthesize(
                             seg.translated_text, voice=voice

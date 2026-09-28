@@ -47,7 +47,6 @@ def create_studio_application() -> StudioApplication:
     key_pool = ApiKeyPool(config.api_keys)
 
     # Models logic
-    # In a full app we'd map config fallbacks here explicitly per service
     transcription_executor = GeminiCallExecutor(
         models=[config.transcription_model] + config.transcription_fallbacks,
         key_pool=key_pool,
